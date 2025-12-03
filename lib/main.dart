@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'pages/login_page.dart' as login;
 import 'pages/home_page.dart' as home;
 import 'pages/npt_entry_page.dart';
+import 'pages/widgets/splash_screen.dart'; // Import your splash screen
 
 void main() {
   runApp(const TrackAllApp());
@@ -27,9 +28,12 @@ class TrackAllApp extends StatelessWidget {
           ),
         ),
       ),
-      initialRoute: '/',
+      // Show SplashScreen first
+      home: const SplashScreen(),
+
+      // Keep named routes for navigation after splash
       routes: {
-        '/': (context) => const login.LoginPage(),
+        '/login': (context) => const login.LoginPage(),
         '/home': (context) => const home.HomePage(),
         '/npt_entry': (context) => const NPTEntryPage(),
       },
