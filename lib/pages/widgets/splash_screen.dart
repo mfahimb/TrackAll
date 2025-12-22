@@ -1,15 +1,19 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../home_page.dart'; // adjust path to your home page
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../pages/login_page.dart' as login;
+import '../../pages/home_page.dart' as home;
+import '../../pages/npt_entry_page.dart' as npt;
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  _SplashScreenState createState() => _SplashScreenState();
+  State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
 
@@ -17,15 +21,6 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   void initState() {
     super.initState();
 
-    // Navigate to home after 3 seconds
-    Timer(const Duration(seconds: 3), () {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomePage()), // your home page
-      );
-    });
-
-    // Animation for scaling
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
@@ -33,6 +28,39 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
     _animation = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
     _controller.forward();
+
+    Timer(const Duration(seconds: 3), () async {
+      String route = await getInitialRoute();
+
+      if (!mounted) return;
+
+      switch (route) {
+        case '/home':
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const home.HomePage()),
+          );
+          break;
+
+        case '/npt_entry':
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const npt.NptEntryPage()),
+          );
+          break;
+
+        default:
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const login.LoginPage()),
+          );
+      }
+    });
+  }
+
+  Future<String> getInitialRoute() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('lastPage') ?? '/login';
   }
 
   @override
@@ -45,22 +73,16 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.deepPurple, Colors.purpleAccent],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
+        color: Colors.white,
         child: Center(
           child: ScaleTransition(
             scale: _animation,
             child: const Text(
-              "PhotoMate",
+              "TrackAll",
               style: TextStyle(
-                fontSize: 36,
+                fontSize: 40,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: Colors.black,
                 letterSpacing: 2,
               ),
             ),
