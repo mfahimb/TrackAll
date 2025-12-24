@@ -10,14 +10,29 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.2
-  http: ^1.1.0
+  http: ^1.2.0
   carousel_slider: ^4.2.0
   intl: ^0.18.1
   shared_preferences: ^2.5.3
+  dropdown_search: ^6.0.3
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
+  # 🔥 REQUIRED for app icon
+  flutter_launcher_icons: ^0.13.1
+
 flutter:
   uses-material-design: true
+
+  assets:
+    - assets/icon/trackall_icon.png
+
+# 🔥 APP ICON CONFIG (ROOT LEVEL)
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/trackall_icon.png"
+  adaptive_icon_background: "#E3F2FD"
+  adaptive_icon_foreground: "assets/icon/trackall_icon.png"
