@@ -29,10 +29,11 @@ class _SplashScreenState extends State<SplashScreen>
     _animation = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
     _controller.forward();
 
+    // Wait 3 seconds, then navigate
     Timer(const Duration(seconds: 3), () async {
-      String route = await getInitialRoute();
-
       if (!mounted) return;
+
+      String route = await getInitialRoute();
 
       switch (route) {
         case '/home':
@@ -58,9 +59,20 @@ class _SplashScreenState extends State<SplashScreen>
     });
   }
 
+  /// Determines the initial route based on login status and last visited page
   Future<String> getInitialRoute() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('lastPage') ?? '/login';
+
+    // Check login status
+    final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+
+    if (!isLoggedIn) {
+      // Fresh install or logged out -> show login page
+      return '/login';
+    }
+
+    // Logged in users -> return last visited page or default to home
+    return prefs.getString('lastPage') ?? '/home';
   }
 
   @override
