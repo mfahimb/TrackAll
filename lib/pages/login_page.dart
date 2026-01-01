@@ -15,11 +15,23 @@ class _LoginPageState extends State<LoginPage> {
   final usernameController = TextEditingController();
   final passwordController = TextEditingController();
   bool loading = false;
+  bool rememberMe = false; // 1. New state variable
 
   @override
   void initState() {
     super.initState();
+    _loadSavedCredentials(); // 2. Load saved data on startup
     _checkSession();
+  }
+
+  // Auto-fill credentials if "Remember Me" was previously checked
+  Future<void> _loadSavedCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      usernameController.text = prefs.getString('remembered_user') ?? '';
+      passwordController.text = prefs.getString('remembered_pass') ?? '';
+      rememberMe = prefs.getBool('remember_me') ?? false;
+    });
   }
 
   Future<void> _checkSession() async {
@@ -29,10 +41,13 @@ class _LoginPageState extends State<LoginPage> {
 
     if (userId != null && loginTime != null) {
       final now = DateTime.now().millisecondsSinceEpoch;
+      // Session valid for 1 hour
       if (now - loginTime < 3600 * 1000) {
         Navigator.pushReplacementNamed(context, '/home');
       } else {
-        await prefs.clear();
+        // Only clear session data, keep "remembered" credentials
+        await prefs.remove('userId');
+        await prefs.remove('loginTime');
       }
     }
   }
@@ -41,14 +56,16 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => loading = true);
 
     final url = Uri.parse("https://trackall-1.onrender.com/login");
+    final username = usernameController.text.trim();
+    final password = passwordController.text.trim();
 
     try {
       final response = await http.post(
         url,
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
-          "username": usernameController.text.trim(),
-          "password": passwordController.text.trim(),
+          "username": username,
+          "password": password,
         }),
       );
 
@@ -57,7 +74,20 @@ class _LoginPageState extends State<LoginPage> {
 
         if (data["succesS_CODE"] == "2000") {
           final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('userId', usernameController.text.trim());
+          
+          // 3. Handle Remember Me logic
+          if (rememberMe) {
+            await prefs.setString('remembered_user', username);
+            await prefs.setString('remembered_pass', password);
+            await prefs.setBool('remember_me', true);
+          } else {
+            await prefs.remove('remembered_user');
+            await prefs.remove('remembered_pass');
+            await prefs.setBool('remember_me', false);
+          }
+
+          // Save Session
+          await prefs.setString('userId', username);
           await prefs.setInt('loginTime', DateTime.now().millisecondsSinceEpoch);
 
           Navigator.pushReplacementNamed(context, '/home');
@@ -85,170 +115,151 @@ class _LoginPageState extends State<LoginPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF2F8FF),
       body: SafeArea(
-        child: Column(
-          children: [
-            // ===== TOP PREMIUM SKY BLUE AREA =====
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 48),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Color(0xFFB6E0FE),
-                    Color(0xFFEAF6FF),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+        child: SingleChildScrollView( // Added scroll view to prevent overflow
+          child: Column(
+            children: [
+              // ===== TOP PREMIUM SKY BLUE AREA =====
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 48),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFFB6E0FE), Color(0xFFEAF6FF)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(60),
+                    bottomRight: Radius.circular(60),
+                  ),
                 ),
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(60),
-                  bottomRight: Radius.circular(60),
-                ),
-              ),
-              child: Column(
-                children: [
-                  // ===== PREMIUM GLASS LOGO =====
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 28, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.55),
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.9),
-                      ),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x33000000),
-                          blurRadius: 18,
-                          offset: Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: ShaderMask(
-                      shaderCallback: (bounds) => const LinearGradient(
-                        colors: [
-                          Color(0xFF2196F3),
-                          Color(0xFF00BCD4),
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.55),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: Colors.white.withOpacity(0.9)),
+                        boxShadow: const [
+                          BoxShadow(color: Color(0x33000000), blurRadius: 18, offset: Offset(0, 8)),
                         ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ).createShader(bounds),
-                      child: const Text(
-                        "TrackAll",
-                        style: TextStyle(
-                          fontSize: 42,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 2.5,
-                          color: Colors.white,
+                      ),
+                      child: ShaderMask(
+                        shaderCallback: (bounds) => const LinearGradient(
+                          colors: [Color(0xFF2196F3), Color(0xFF00BCD4)],
+                        ).createShader(bounds),
+                        child: const Text(
+                          "TrackAll",
+                          style: TextStyle(
+                            fontSize: 42,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 2.5,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-
-                  const SizedBox(height: 14),
-
-                  const Text(
-                    "Smart tracking. Better control.",
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: Color(0xFF5C7C99),
-                      letterSpacing: 0.6,
+                    const SizedBox(height: 14),
+                    const Text(
+                      "Smart tracking. Better control.",
+                      style: TextStyle(fontSize: 15, color: Color(0xFF5C7C99), letterSpacing: 0.6),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
 
-            const SizedBox(height: 40),
+              const SizedBox(height: 40),
 
-            // ===== LOGIN FORM =====
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                children: [
-                  // Username
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x22000000),
-                          blurRadius: 10,
-                        ),
-                      ],
-                    ),
-                    child: TextField(
+              // ===== LOGIN FORM =====
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  children: [
+                    // Username
+                    _buildTextField(
                       controller: usernameController,
-                      decoration: const InputDecoration(
-                        prefixIcon:
-                            Icon(Icons.person, color: Color(0xFF5C9DED)),
-                        hintText: "User ID",
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.all(16),
-                      ),
+                      icon: Icons.person,
+                      hint: "User ID",
                     ),
-                  ),
+                    const SizedBox(height: 20),
+                    // Password
+                    _buildTextField(
+                      controller: passwordController,
+                      icon: Icons.lock,
+                      hint: "Password",
+                      isPassword: true,
+                    ),
 
-                  const SizedBox(height: 20),
-
-                  // Password
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x22000000),
-                          blurRadius: 10,
+                    // 4. Remember Me Checkbox
+                    Row(
+                      children: [
+                        Checkbox(
+                          value: rememberMe,
+                          activeColor: const Color(0xFF5C9DED),
+                          onChanged: (value) {
+                            setState(() => rememberMe = value!);
+                          },
+                        ),
+                        const Text(
+                          "Remember Me",
+                          style: TextStyle(color: Color(0xFF5C7C99), fontWeight: FontWeight.w500),
                         ),
                       ],
                     ),
-                    child: TextField(
-                      controller: passwordController,
-                      obscureText: true,
-                      decoration: const InputDecoration(
-                        prefixIcon:
-                            Icon(Icons.lock, color: Color(0xFF5C9DED)),
-                        hintText: "Password",
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.all(16),
-                      ),
-                    ),
-                  ),
 
-                  const SizedBox(height: 35),
+                    const SizedBox(height: 20),
 
-                  // Login Button
-                  loading
-                      ? const LoadingIndicator()
-                      : SizedBox(
-                          width: double.infinity,
-                          height: 55,
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF5C9DED),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
+                    // Login Button
+                    loading
+                        ? const LoadingIndicator()
+                        : SizedBox(
+                            width: double.infinity,
+                            height: 55,
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF5C9DED),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                elevation: 3,
                               ),
-                              elevation: 3,
-                            ),
-                            onPressed: login,
-                            child: const Text(
-                              "Login",
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
+                              onPressed: login,
+                              child: const Text(
+                                "Login",
+                                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: Colors.white),
                               ),
                             ),
                           ),
-                        ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Helper to keep the UI clean
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required IconData icon,
+    required String hint,
+    bool isPassword = false,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [BoxShadow(color: Color(0x22000000), blurRadius: 10)],
+      ),
+      child: TextField(
+        controller: controller,
+        obscureText: isPassword,
+        decoration: InputDecoration(
+          prefixIcon: Icon(icon, color: const Color(0xFF5C9DED)),
+          hintText: hint,
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.all(16),
         ),
       ),
     );

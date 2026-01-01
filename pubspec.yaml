@@ -20,7 +20,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  # 🔥 REQUIRED for app icon
+  # 🔥 REQUIRED for app icon generation
   flutter_launcher_icons: ^0.13.1
 
 flutter:
@@ -29,10 +29,10 @@ flutter:
   assets:
     - assets/icon/trackall_icon.png
 
-# 🔥 APP ICON CONFIG (ROOT LEVEL)
+# 🔥 APP ICON CONFIG (ROOT LEVEL – NOT under flutter)
 flutter_icons:
   android: true
   ios: true
-  image_path: "assets/icon/trackall_icon.png"
+  image_path: assets/icon/trackall_icon.png
   adaptive_icon_background: "#E3F2FD"
-  adaptive_icon_foreground: "assets/icon/trackall_icon.png"
+  adaptive_icon_foreground: assets/icon/trackall_icon.png

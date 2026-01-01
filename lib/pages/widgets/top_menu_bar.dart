@@ -16,6 +16,8 @@ class _TopMenuBarState extends State<TopMenuBar>
   late Animation<double> _fade;
   late Animation<Offset> _slide;
 
+  String? userId; // store logged-in staff ID
+
   // Keys for desktop buttons
   final GlobalKey _workStudyKey = GlobalKey();
   final GlobalKey _dashboardKey = GlobalKey();
@@ -33,82 +35,88 @@ class _TopMenuBarState extends State<TopMenuBar>
     );
     _fade = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
     _slide =
-        Tween(begin: const Offset(0, -0.05), end: Offset.zero).animate(_controller);
+        Tween(begin: const Offset(0, -0.05), end: Offset.zero)
+            .animate(_controller);
+
+    _loadUserId();
+  }
+
+  Future<void> _loadUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      userId = prefs.getString('userId');
+    });
   }
 
   // ================= DROPDOWN (DESKTOP & MOBILE) =================
   void _showDropdown(
-    BuildContext context, GlobalKey key, List<DropdownItem> items) {
-  _removeDropdown();
+      BuildContext context, GlobalKey key, List<DropdownItem> items) {
+    _removeDropdown();
 
-  final box = key.currentContext!.findRenderObject() as RenderBox;
-  final pos = box.localToGlobal(Offset.zero);
-  final size = box.size;
+    final box = key.currentContext!.findRenderObject() as RenderBox;
+    final pos = box.localToGlobal(Offset.zero);
+    final size = box.size;
 
-  final screenWidth = MediaQuery.of(context).size.width;
-  final isMobile = screenWidth < 720;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 720;
 
-  const double desktopWidth = 180;
-  final double menuWidth = isMobile ? 180 : desktopWidth;
+    const double desktopWidth = 180;
+    final double menuWidth = isMobile ? 180 : desktopWidth;
 
-  double left;
+    double left;
 
-  if (isMobile) {
-    // ✅ Align dropdown to the RIGHT of hamburger
-    left = pos.dx + size.width - menuWidth;
+    if (isMobile) {
+      left = pos.dx + size.width - menuWidth;
+      if (left < 8) left = 8;
+    } else {
+      left = pos.dx;
+    }
 
-    // Safety clamp (never go off-screen)
-    if (left < 8) left = 8;
-  } else {
-    left = pos.dx;
-  }
-
-  _overlay = OverlayEntry(
-    builder: (_) => GestureDetector(
-      behavior: HitTestBehavior.translucent,
-      onTap: _removeDropdown,
-      child: Stack(
-        children: [
-          Positioned(
-            left: left,
-            top: pos.dy + size.height + 6,
-            width: menuWidth,
-            child: Material(
-              color: Colors.transparent,
-              child: FadeTransition(
-                opacity: _fade,
-                child: SlideTransition(
-                  position: _slide,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.blueGrey.shade900.withOpacity(.96),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Colors.black45,
-                          blurRadius: 14,
-                          offset: Offset(0, 6),
-                        )
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: items.map(_menuItem).toList(),
+    _overlay = OverlayEntry(
+      builder: (_) => GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: _removeDropdown,
+        child: Stack(
+          children: [
+            Positioned(
+              left: left,
+              top: pos.dy + size.height + 6,
+              width: menuWidth,
+              child: Material(
+                color: Colors.transparent,
+                child: FadeTransition(
+                  opacity: _fade,
+                  child: SlideTransition(
+                    position: _slide,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.blueGrey.shade900.withOpacity(.96),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black45,
+                            blurRadius: 14,
+                            offset: Offset(0, 6),
+                          )
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: items.map(_menuItem).toList(),
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
+    );
 
-  Overlay.of(context).insert(_overlay!);
-  _controller.forward(from: 0);
-}
-
+    Overlay.of(context).insert(_overlay!);
+    _controller.forward(from: 0);
+  }
 
   Widget _menuItem(DropdownItem item) {
     return InkWell(
@@ -141,7 +149,7 @@ class _TopMenuBarState extends State<TopMenuBar>
 
   // ================= MOBILE DROPDOWN =================
   void _openMobileDropdown(BuildContext context) {
-    _showDropdown(context, _menuIconKey, [
+    List<DropdownItem> items = [
       DropdownItem(
         label: "Downtime Entry",
         onTap: () {
@@ -151,24 +159,37 @@ class _TopMenuBarState extends State<TopMenuBar>
           );
         },
       ),
-      DropdownItem(
-        label: "NPT Report",
-        onTap: () => Navigator.pushNamed(context, '/npt_entry'),
-      ),
-      DropdownItem(
-        label: "Admin Panel",
-        onTap: () => Navigator.pushNamed(context, '/admin'),
-      ),
+    ];
+
+    // Only staff ID 540150 can see admin/report
+    if (userId == "540150") {
+      items.addAll([
+        DropdownItem(
+          label: "NPT Report",
+          onTap: () => Navigator.pushNamed(context, '/npt_entry'),
+        ),
+        DropdownItem(
+          label: "Admin Panel",
+          onTap: () => Navigator.pushNamed(context, '/admin'),
+        ),
+      ]);
+    }
+
+    items.add(
       DropdownItem(
         label: "Logout",
         onTap: _logout,
       ),
-    ]);
+    );
+
+    _showDropdown(context, _menuIconKey, items);
   }
 
+  // ✅ LOGOUT
   Future<void> _logout() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
+    await prefs.remove('userId');
+    await prefs.remove('loginTime');
     Navigator.pushReplacementNamed(context, '/login');
   }
 
@@ -189,7 +210,6 @@ class _TopMenuBarState extends State<TopMenuBar>
         ),
         child: Row(
           children: [
-            // LOGO
             ShaderMask(
               shaderCallback: (rect) => const LinearGradient(
                 colors: [Colors.white, Colors.blueAccent],
@@ -207,7 +227,6 @@ class _TopMenuBarState extends State<TopMenuBar>
 
             const Spacer(),
 
-            // MOBILE
             if (isMobile)
               IconButton(
                 key: _menuIconKey,
@@ -215,31 +234,34 @@ class _TopMenuBarState extends State<TopMenuBar>
                 onPressed: () => _openMobileDropdown(context),
               ),
 
-            // DESKTOP
-            if (!isMobile) ...[
+            if (!isMobile && userId != null) ...[
               _menuButton("Work Study", _workStudyKey, [
                 DropdownItem(
                   label: "Downtime Entry",
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const NptEntryPage()),
+                      MaterialPageRoute(
+                          builder: (_) => const NptEntryPage()),
                     );
                   },
                 ),
               ]),
-              _menuButton("Dashboard", _dashboardKey, [
-                DropdownItem(
-                  label: "NPT Report",
-                  onTap: () => Navigator.pushNamed(context, '/npt_entry'),
-                ),
-              ]),
-              _menuButton("Admin", _adminKey, [
-                DropdownItem(
-                  label: "Admin Panel",
-                  onTap: () => Navigator.pushNamed(context, '/admin'),
-                ),
-              ]),
+              if (userId == "540150")
+                _menuButton("Dashboard", _dashboardKey, [
+                  DropdownItem(
+                    label: "NPT Report",
+                    onTap: () =>
+                        Navigator.pushNamed(context, '/npt_entry'),
+                  ),
+                ]),
+              if (userId == "540150")
+                _menuButton("Admin", _adminKey, [
+                  DropdownItem(
+                    label: "Admin Panel",
+                    onTap: () => Navigator.pushNamed(context, '/admin'),
+                  ),
+                ]),
               const SizedBox(width: 16),
               ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
