@@ -218,7 +218,8 @@ class LovService {
 
       "DW_NFO": n(numberOfOperators),
       "DW_DEP": n(deptId),
-      "DW_RES_USR": n(responsibleUserId),
+      "DW_RES_USR": responsibleUserId,
+
 
       "DW_GMT_LOSS_QTY": n(gmtLossQty),
       "CID": n(_cid),
