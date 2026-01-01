@@ -17,14 +17,14 @@ class _NptEntryPageState extends State<NptEntryPage> {
       categoryId,
       responsibleUserId,
       deptId,
-      machineNo,
-      staffId;
+      machineNo;
 
   String? buildingLabel,
       processLabel,
       lineLabel,
       categoryLabel,
       responsibleUserLabel,
+      deptLabel,
       causeLabel,
       machineLabel;
 
@@ -43,7 +43,6 @@ class _NptEntryPageState extends State<NptEntryPage> {
       downtimeCauseList = [],
       operationCategoryList = [];
 
-  // Updated machineList: Only numeric labels
   final List<Map<String, String>> machineList =
       List.generate(10, (i) => {"id": "${i + 1}", "label": "${i + 1}"});
 
@@ -68,18 +67,10 @@ class _NptEntryPageState extends State<NptEntryPage> {
     await Future.wait([
       _lovService.fetchLov(qryType: "BUILDING").then((v) => buildingList = v),
       _lovService.fetchLov(qryType: "PROCESS").then((v) => processList = v),
-      _lovService
-          .fetchLov(qryType: "DOWNTIME")
-          .then((v) => downtimeCauseList = v),
-      _lovService
-          .fetchLov(qryType: "RESP_DEPT")
-          .then((v) => responsibleDeptList = v),
-      _lovService
-          .fetchLov(qryType: "OPERATION")
-          .then((v) => operationCategoryList = v),
-      _lovService
-          .fetchLov(qryType: "RESP_USER")
-          .then((v) => responsibleUserList = v),
+      _lovService.fetchLov(qryType: "DOWNTIME").then((v) => downtimeCauseList = v),
+      _lovService.fetchLov(qryType: "RESP_DEPT").then((v) => responsibleDeptList = v),
+      _lovService.fetchLov(qryType: "OPERATION").then((v) => operationCategoryList = v),
+      _lovService.fetchLov(qryType: "RESP_USER").then((v) => responsibleUserList = v),
     ]);
 
     setState(() => _isLoading = false);
@@ -99,10 +90,8 @@ class _NptEntryPageState extends State<NptEntryPage> {
     if (startTime == null || endTime == null) return "0";
 
     final now = DateTime.now();
-    final start = DateTime(
-        now.year, now.month, now.day, startTime!.hour, startTime!.minute);
-    var end = DateTime(
-        now.year, now.month, now.day, endTime!.hour, endTime!.minute);
+    final start = DateTime(now.year, now.month, now.day, startTime!.hour, startTime!.minute);
+    var end = DateTime(now.year, now.month, now.day, endTime!.hour, endTime!.minute);
 
     if (end.isBefore(start)) end = end.add(const Duration(days: 1));
 
@@ -112,8 +101,7 @@ class _NptEntryPageState extends State<NptEntryPage> {
   Future<void> pickTime(bool isStart) async {
     final picked = await showTimePicker(
       context: context,
-      initialTime:
-          isStart ? (startTime ?? TimeOfDay.now()) : (endTime ?? TimeOfDay.now()),
+      initialTime: isStart ? (startTime ?? TimeOfDay.now()) : (endTime ?? TimeOfDay.now()),
     );
     if (picked != null) {
       setState(() {
@@ -136,7 +124,8 @@ class _NptEntryPageState extends State<NptEntryPage> {
       causeLabel,
       startTime,
       endTime,
-      responsibleUserId
+      responsibleUserId,
+      deptId
     ].contains(null)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -160,10 +149,8 @@ class _NptEntryPageState extends State<NptEntryPage> {
     }
 
     final now = DateTime.now();
-    final s = DateTime(
-        now.year, now.month, now.day, startTime!.hour, startTime!.minute);
-    var e =
-        DateTime(now.year, now.month, now.day, endTime!.hour, endTime!.minute);
+    final s = DateTime(now.year, now.month, now.day, startTime!.hour, startTime!.minute);
+    var e = DateTime(now.year, now.month, now.day, endTime!.hour, endTime!.minute);
     if (!e.isAfter(s)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -174,23 +161,26 @@ class _NptEntryPageState extends State<NptEntryPage> {
       return;
     }
 
+    // ✅ UPDATED: Use "userId" stored from LoginPage
+    final loginStaffId = prefs.getString("userId") ?? "0";
+
     final success = await _lovService.saveNptEntry(
-  buildingId: buildingId!,
-  processId: processId!,
-  lineId: lineId ?? "0",        // LINE_NO
-  machineNo: machineNo ?? "0",  // DW_LINE_NO
-  smv: smv ?? "0",
-  categoryId: categoryId!,
-  startTime: startTime!,
-  endTime: endTime!,
-  cause: causeLabel!,
-  deptId: deptId ?? "0",
-  responsibleUserId: responsibleUserId!, // DW_RES_USR
-  remarks: remarks ?? "",
-  gmtLossQty: gmtLossQty ?? "0",
-  staffId: prefs.getString("login_id") ?? "0", // created_by
-  numberOfOperators: numberOfOperators ?? "0",
-);
+      buildingId: buildingId!,
+      processId: processId!,
+      lineId: lineId ?? "0",
+      machineNo: machineNo ?? "0",
+      smv: smv ?? "0",
+      categoryId: categoryId!,
+      startTime: startTime!,
+      endTime: endTime!,
+      cause: causeLabel!,
+      deptId: deptId!,
+      responsibleUserId: responsibleUserId!,
+      remarks: remarks ?? "",
+      gmtLossQty: gmtLossQty ?? "0",
+      staffId: loginStaffId,
+      numberOfOperators: numberOfOperators ?? "0",
+    );
 
     nptList.insert(0, {
       "id": DateTime.now().millisecondsSinceEpoch.toString(),
@@ -221,8 +211,7 @@ class _NptEntryPageState extends State<NptEntryPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6FB),
       appBar: AppBar(
-        title: const Text("NPT Entry",
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text("NPT Entry", style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white,
         elevation: 0.5,
       ),
@@ -235,66 +224,59 @@ class _NptEntryPageState extends State<NptEntryPage> {
             spacing: 12,
             runSpacing: 16,
             children: [
-              _modernDropdown("Building *", buildingLabel, buildingList,
-                  (id, label) {
+              _modernDropdown(context, "Building *", buildingLabel, buildingList, (id, label) {
                 setState(() {
                   buildingId = id;
                   buildingLabel = label;
                 });
                 fetchLine();
               }, width),
-              _modernDropdown("Process *", processLabel, processList,
-                  (id, label) {
+              _modernDropdown(context, "Process *", processLabel, processList, (id, label) {
                 setState(() {
                   processId = id;
                   processLabel = label;
                 });
                 fetchLine();
               }, width),
-              _modernDropdown("Category *", categoryLabel,
-                  operationCategoryList, (id, label) {
+              _modernDropdown(context, "Category *", categoryLabel, operationCategoryList, (id, label) {
                 setState(() {
                   categoryId = id;
                   categoryLabel = label;
                 });
               }, width),
-              _modernDropdown("Line No", lineLabel, lineList, (id, label) {
+              _modernDropdown(context, "Line No", lineLabel, lineList, (id, label) {
                 setState(() {
                   lineId = id;
                   lineLabel = label;
                 });
               }, width),
-              _modernDropdown("Machine No", machineLabel, machineList,
-                  (id, label) {
+              _modernDropdown(context, "Machine No", machineLabel, machineList, (id, label) {
                 setState(() {
                   machineNo = id;
                   machineLabel = label;
                 });
               }, width),
-              _timeField("Start Time *", _startController, () => pickTime(true),
-                  width,
-                  icon: Icons.access_time),
-              _timeField("End Time *", _endController, () => pickTime(false),
-                  width,
-                  icon: Icons.access_time),
+              _modernDropdown(context, "Responsible Dept *", deptLabel, responsibleDeptList, (id, label) {
+                setState(() {
+                  deptId = id;
+                  deptLabel = label;
+                });
+              }, width),
+              _timeField("Start Time *", _startController, () => pickTime(true), width, icon: Icons.access_time),
+              _timeField("End Time *", _endController, () => pickTime(false), width, icon: Icons.access_time),
               _readOnlyField("Total (Min)", totalTimeFormatted, width),
               _textField("SMV", (v) => smv = v, width, isNumber: true),
-              _modernDropdown("Cause *", causeLabel, downtimeCauseList,
-                  (id, label) {
+              _modernDropdown(context, "Cause *", causeLabel, downtimeCauseList, (id, label) {
                 setState(() => causeLabel = label);
               }, width),
-              _textField("Number of Operators", (v) => numberOfOperators = v,
-                  width,
-                  isNumber: true),
-              _modernDropdown("Responsible User *", responsibleUserLabel,
-                  responsibleUserList, (id, label) {
+              _textField("Number of Operators", (v) => numberOfOperators = v, width, isNumber: true),
+              _modernDropdown(context, "Responsible User *", responsibleUserLabel, responsibleUserList, (id, label) {
                 setState(() {
                   responsibleUserId = id;
                   responsibleUserLabel = label;
                 });
               }, width),
-              _textField("GMT Loss Qty", (v) => gmtLossQty = v, width,
-                  isNumber: true),
+              _textField("GMT Loss Qty", (v) => gmtLossQty = v, width, isNumber: true),
               _textField("Remarks", (v) => remarks = v, width * 2 + 12),
               const SizedBox(height: 20),
               SizedBox(
@@ -304,13 +286,10 @@ class _NptEntryPageState extends State<NptEntryPage> {
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     backgroundColor: Colors.blueAccent,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                     elevation: 6,
                   ),
-                  child: const Text("SAVE ENTRY",
-                      style: TextStyle(
-                          fontWeight: FontWeight.bold, color: Colors.white)),
+                  child: const Text("SAVE ENTRY", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
                 ),
               ),
             ],
@@ -320,8 +299,8 @@ class _NptEntryPageState extends State<NptEntryPage> {
     );
   }
 
-  // ---------- UPDATED SEARCH DIALOG ----------
-  void _searchDialog(String title, List<Map<String, String>> items,
+  // ---------------- SEARCH DIALOG ----------------
+  void _searchDialog(BuildContext context, String title, List<Map<String, String>> items,
       void Function(String, String) onSelect) {
     List<Map<String, String>> filtered = List.from(items);
     String currentSearch = "";
@@ -330,9 +309,7 @@ class _NptEntryPageState extends State<NptEntryPage> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) {
         return StatefulBuilder(builder: (c, setS) {
           return Container(
@@ -340,9 +317,7 @@ class _NptEntryPageState extends State<NptEntryPage> {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                Text("Select $title",
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.bold)),
+                Text("Select $title", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -351,7 +326,7 @@ class _NptEntryPageState extends State<NptEntryPage> {
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: TextField(
-                    autofocus: false, // <-- keyboard will open only after tap
+                    autofocus: false,
                     decoration: const InputDecoration(
                         prefixIcon: Icon(Icons.search),
                         hintText: "Search or Type...",
@@ -359,9 +334,7 @@ class _NptEntryPageState extends State<NptEntryPage> {
                     onChanged: (v) => setS(() {
                       currentSearch = v;
                       filtered = items
-                          .where((e) => e["label"]!
-                              .toLowerCase()
-                              .contains(v.toLowerCase()))
+                          .where((e) => e["label"]!.toLowerCase().contains(v.toLowerCase()))
                           .toList();
                     }),
                   ),
@@ -386,21 +359,14 @@ class _NptEntryPageState extends State<NptEntryPage> {
                             },
                             child: Container(
                               margin: const EdgeInsets.only(bottom: 10),
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 16, horizontal: 14),
+                              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 14),
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(color: Colors.grey.shade200),
-                                boxShadow: const [
-                                  BoxShadow(
-                                      color: Color(0x0A000000),
-                                      blurRadius: 8,
-                                      offset: Offset(0, 4))
-                                ],
+                                boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 8, offset: Offset(0, 4))],
                               ),
-                              child: Text(item["label"]!,
-                                  style: const TextStyle(fontSize: 14)),
+                              child: Text(item["label"]!, style: const TextStyle(fontSize: 14)),
                             ),
                           )),
                     ],
@@ -415,13 +381,12 @@ class _NptEntryPageState extends State<NptEntryPage> {
   }
 
   // ---------------- MODERN DROPDOWN ----------------
-  Widget _modernDropdown(String label, String? value, List<Map<String, String>> list,
+  Widget _modernDropdown(BuildContext context, String label, String? value, List<Map<String, String>> list,
       void Function(String, String) onSelect, double width) {
     return SizedBox(
       width: width,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
         const SizedBox(height: 6),
         Container(
           height: 44,
@@ -430,21 +395,15 @@ class _NptEntryPageState extends State<NptEntryPage> {
             color: Colors.white,
             borderRadius: BorderRadius.circular(14),
             boxShadow: const [
-              BoxShadow(
-                  color: Color(0x22000000),
-                  blurRadius: 12,
-                  offset: Offset(0, 6))
+              BoxShadow(color: Color(0x22000000), blurRadius: 12, offset: Offset(0, 6))
             ],
           ),
           child: InkWell(
             borderRadius: BorderRadius.circular(14),
-            onTap: () => _searchDialog(label, list, onSelect),
+            onTap: () => _searchDialog(context, label, list, onSelect),
             child: Row(
               children: [
-                Expanded(
-                    child: Text(value ?? "Select",
-                        style: const TextStyle(fontSize: 13),
-                        overflow: TextOverflow.ellipsis)),
+                Expanded(child: Text(value ?? "Select", style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis)),
                 const Icon(Icons.expand_more, color: Colors.grey),
               ],
             ),
@@ -460,8 +419,7 @@ class _NptEntryPageState extends State<NptEntryPage> {
     return SizedBox(
       width: width,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
         const SizedBox(height: 6),
         Container(
           height: 44,
@@ -470,16 +428,11 @@ class _NptEntryPageState extends State<NptEntryPage> {
             color: Colors.white,
             borderRadius: BorderRadius.circular(14),
             boxShadow: const [
-              BoxShadow(
-                  color: Color(0x22000000),
-                  blurRadius: 10,
-                  offset: Offset(0, 4))
+              BoxShadow(color: Color(0x22000000), blurRadius: 10, offset: Offset(0, 4))
             ],
           ),
           child: TextField(
-            keyboardType: isNumber
-                ? const TextInputType.numberWithOptions(decimal: true)
-                : TextInputType.text,
+            keyboardType: isNumber ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
             onChanged: onChanged,
             style: const TextStyle(fontSize: 13),
             decoration: const InputDecoration(border: InputBorder.none),
@@ -496,8 +449,7 @@ class _NptEntryPageState extends State<NptEntryPage> {
     return SizedBox(
       width: width,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
         const SizedBox(height: 6),
         GestureDetector(
           onTap: onTap,
@@ -509,18 +461,12 @@ class _NptEntryPageState extends State<NptEntryPage> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(14),
                 boxShadow: const [
-                  BoxShadow(
-                      color: Color(0x22000000),
-                      blurRadius: 10,
-                      offset: Offset(0, 4))
+                  BoxShadow(color: Color(0x22000000), blurRadius: 10, offset: Offset(0, 4))
                 ],
               ),
               child: Row(
                 children: [
-                  Expanded(
-                      child: Text(
-                          controller.text.isEmpty ? "00:00" : controller.text,
-                          style: const TextStyle(fontSize: 13))),
+                  Expanded(child: Text(controller.text.isEmpty ? "00:00" : controller.text, style: const TextStyle(fontSize: 13))),
                   if (icon != null) Icon(icon, color: Colors.grey, size: 20),
                 ],
               ),
@@ -536,8 +482,7 @@ class _NptEntryPageState extends State<NptEntryPage> {
     return SizedBox(
       width: width,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
         const SizedBox(height: 6),
         Container(
           height: 44,
@@ -547,8 +492,7 @@ class _NptEntryPageState extends State<NptEntryPage> {
             color: Colors.grey.shade200,
             borderRadius: BorderRadius.circular(14),
           ),
-          child: Text(value,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+          child: Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
         ),
       ]),
     );

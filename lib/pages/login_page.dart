@@ -15,13 +15,13 @@ class _LoginPageState extends State<LoginPage> {
   final usernameController = TextEditingController();
   final passwordController = TextEditingController();
   bool loading = false;
-  bool rememberMe = false; // 1. New state variable
+  bool rememberMe = false; // Remember Me state
 
   @override
   void initState() {
     super.initState();
-    _loadSavedCredentials(); // 2. Load saved data on startup
-    _checkSession();
+    _loadSavedCredentials(); // Load saved credentials
+    _checkSession(); // Check if session is valid
   }
 
   // Auto-fill credentials if "Remember Me" was previously checked
@@ -34,6 +34,7 @@ class _LoginPageState extends State<LoginPage> {
     });
   }
 
+  // Check if a valid session exists
   Future<void> _checkSession() async {
     final prefs = await SharedPreferences.getInstance();
     final userId = prefs.getString('userId');
@@ -45,7 +46,7 @@ class _LoginPageState extends State<LoginPage> {
       if (now - loginTime < 3600 * 1000) {
         Navigator.pushReplacementNamed(context, '/home');
       } else {
-        // Only clear session data, keep "remembered" credentials
+        // Clear only session data, keep remembered credentials
         await prefs.remove('userId');
         await prefs.remove('loginTime');
       }
@@ -63,10 +64,7 @@ class _LoginPageState extends State<LoginPage> {
       final response = await http.post(
         url,
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "username": username,
-          "password": password,
-        }),
+        body: jsonEncode({"username": username, "password": password}),
       );
 
       if (response.statusCode == 200) {
@@ -74,8 +72,13 @@ class _LoginPageState extends State<LoginPage> {
 
         if (data["succesS_CODE"] == "2000") {
           final prefs = await SharedPreferences.getInstance();
-          
-          // 3. Handle Remember Me logic
+
+          // Save actual userId from backend (not username)
+          final userId = data["userId"] ?? username; // fallback to username if backend doesn't return
+          await prefs.setString('userId', userId);
+          await prefs.setInt('loginTime', DateTime.now().millisecondsSinceEpoch);
+
+          // Remember Me logic
           if (rememberMe) {
             await prefs.setString('remembered_user', username);
             await prefs.setString('remembered_pass', password);
@@ -85,10 +88,6 @@ class _LoginPageState extends State<LoginPage> {
             await prefs.remove('remembered_pass');
             await prefs.setBool('remember_me', false);
           }
-
-          // Save Session
-          await prefs.setString('userId', username);
-          await prefs.setInt('loginTime', DateTime.now().millisecondsSinceEpoch);
 
           Navigator.pushReplacementNamed(context, '/home');
         } else {
@@ -115,7 +114,7 @@ class _LoginPageState extends State<LoginPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF2F8FF),
       body: SafeArea(
-        child: SingleChildScrollView( // Added scroll view to prevent overflow
+        child: SingleChildScrollView(
           child: Column(
             children: [
               // ===== TOP PREMIUM SKY BLUE AREA =====
@@ -191,7 +190,7 @@ class _LoginPageState extends State<LoginPage> {
                       isPassword: true,
                     ),
 
-                    // 4. Remember Me Checkbox
+                    // Remember Me Checkbox
                     Row(
                       children: [
                         Checkbox(
