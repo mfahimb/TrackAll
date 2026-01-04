@@ -161,7 +161,6 @@ class _NptEntryPageState extends State<NptEntryPage> {
       return;
     }
 
-    // ✅ UPDATED: Use "userId" stored from LoginPage
     final loginStaffId = prefs.getString("userId") ?? "0";
 
     final success = await _lovService.saveNptEntry(
@@ -209,20 +208,21 @@ class _NptEntryPageState extends State<NptEntryPage> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F6FB),
+      backgroundColor: const Color(0xFFF0F2F8),
       appBar: AppBar(
-        title: const Text("NPT Entry", style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text("NPT Entry", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black, fontSize: 18)),
         backgroundColor: Colors.white,
         elevation: 0.5,
+        iconTheme: const IconThemeData(color: Colors.black),
       ),
       body: LayoutBuilder(builder: (context, constraints) {
         final width = (constraints.maxWidth - 44) / 2;
 
         return SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Wrap(
             spacing: 12,
-            runSpacing: 16,
+            runSpacing: 12, // More compact vertical spacing
             children: [
               _modernDropdown(context, "Building *", buildingLabel, buildingList, (id, label) {
                 setState(() {
@@ -278,18 +278,18 @@ class _NptEntryPageState extends State<NptEntryPage> {
               }, width),
               _textField("GMT Loss Qty", (v) => gmtLossQty = v, width, isNumber: true),
               _textField("Remarks", (v) => remarks = v, width * 2 + 12),
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: _handleSave,
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: Colors.blueAccent,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                    elevation: 6,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    backgroundColor: const Color(0xFF1A73E8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 2,
                   ),
-                  child: const Text("SAVE ENTRY", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                  child: const Text("SAVE ENTRY", style: TextStyle(fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1)),
                 ),
               ),
             ],
@@ -309,27 +309,33 @@ class _NptEntryPageState extends State<NptEntryPage> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
       builder: (context) {
         return StatefulBuilder(builder: (c, setS) {
           return Container(
-            height: MediaQuery.of(context).size.height * 0.85,
-            padding: const EdgeInsets.all(16),
+            height: MediaQuery.of(context).size.height * 0.80,
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
             child: Column(
               children: [
-                Text("Select $title", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 16),
+                Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
+                const SizedBox(height: 12),
+                Text("Select $title", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black)),
+                const SizedBox(height: 12),
                 Container(
+                  height: 45,
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF4F6FB),
-                    borderRadius: BorderRadius.circular(14),
+                    color: const Color(0xFFF1F3F4),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.grey.shade300)
                   ),
                   child: TextField(
                     autofocus: false,
+                    style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w500),
                     decoration: const InputDecoration(
-                        prefixIcon: Icon(Icons.search),
-                        hintText: "Search or Type...",
+                        prefixIcon: Icon(Icons.search, color: Colors.black54),
+                        hintText: "Search...",
+                        hintStyle: TextStyle(fontSize: 14),
                         border: InputBorder.none),
                     onChanged: (v) => setS(() {
                       currentSearch = v;
@@ -339,14 +345,14 @@ class _NptEntryPageState extends State<NptEntryPage> {
                     }),
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 12),
                 Expanded(
                   child: ListView(
                     children: [
                       if (filtered.isEmpty && currentSearch.isNotEmpty)
                         ListTile(
-                          title: Text("Use manual: $currentSearch"),
-                          leading: const Icon(Icons.add, color: Colors.blue),
+                          title: Text("Use manual: $currentSearch", style: const TextStyle(fontWeight: FontWeight.bold)),
+                          leading: const Icon(Icons.add_circle, color: Colors.blue),
                           onTap: () {
                             onSelect(currentSearch, currentSearch);
                             Navigator.pop(context);
@@ -358,15 +364,15 @@ class _NptEntryPageState extends State<NptEntryPage> {
                               Navigator.pop(context);
                             },
                             child: Container(
-                              margin: const EdgeInsets.only(bottom: 10),
-                              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 14),
+                              margin: const EdgeInsets.only(bottom: 6),
+                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
                               decoration: BoxDecoration(
                                 color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.grey.shade200),
-                                boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 8, offset: Offset(0, 4))],
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.grey.shade100),
+                                boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 4, offset: Offset(0, 2))],
                               ),
-                              child: Text(item["label"]!, style: const TextStyle(fontSize: 14)),
+                              child: Text(item["label"]!, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black87)),
                             ),
                           )),
                     ],
@@ -386,25 +392,23 @@ class _NptEntryPageState extends State<NptEntryPage> {
     return SizedBox(
       width: width,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 6),
+        Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.black)),
+        const SizedBox(height: 4),
         Container(
-          height: 44,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
+          height: 38, // More compact
+          padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: const [
-              BoxShadow(color: Color(0x22000000), blurRadius: 12, offset: Offset(0, 6))
-            ],
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey.shade300),
+            boxShadow: const [BoxShadow(color: Color(0x0F000000), blurRadius: 4, offset: Offset(0, 2))],
           ),
           child: InkWell(
-            borderRadius: BorderRadius.circular(14),
             onTap: () => _searchDialog(context, label, list, onSelect),
             child: Row(
               children: [
-                Expanded(child: Text(value ?? "Select", style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis)),
-                const Icon(Icons.expand_more, color: Colors.grey),
+                Expanded(child: Text(value ?? "Select", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black87), overflow: TextOverflow.ellipsis)),
+                const Icon(Icons.arrow_drop_down, color: Colors.black87, size: 20),
               ],
             ),
           ),
@@ -419,23 +423,22 @@ class _NptEntryPageState extends State<NptEntryPage> {
     return SizedBox(
       width: width,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 6),
+        Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.black)),
+        const SizedBox(height: 4),
         Container(
-          height: 44,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
+          height: 38, // More compact
+          padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: const [
-              BoxShadow(color: Color(0x22000000), blurRadius: 10, offset: Offset(0, 4))
-            ],
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey.shade300),
+            boxShadow: const [BoxShadow(color: Color(0x0F000000), blurRadius: 4, offset: Offset(0, 2))],
           ),
           child: TextField(
             keyboardType: isNumber ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
             onChanged: onChanged,
-            style: const TextStyle(fontSize: 13),
-            decoration: const InputDecoration(border: InputBorder.none),
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black),
+            decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 10)),
           ),
         ),
       ]),
@@ -449,25 +452,24 @@ class _NptEntryPageState extends State<NptEntryPage> {
     return SizedBox(
       width: width,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 6),
+        Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.black)),
+        const SizedBox(height: 4),
         GestureDetector(
           onTap: onTap,
           child: AbsorbPointer(
             child: Container(
-              height: 44,
-              padding: const EdgeInsets.symmetric(horizontal: 14),
+              height: 38, // More compact
+              padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: const [
-                  BoxShadow(color: Color(0x22000000), blurRadius: 10, offset: Offset(0, 4))
-                ],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade300),
+                boxShadow: const [BoxShadow(color: Color(0x0F000000), blurRadius: 4, offset: Offset(0, 2))],
               ),
               child: Row(
                 children: [
-                  Expanded(child: Text(controller.text.isEmpty ? "00:00" : controller.text, style: const TextStyle(fontSize: 13))),
-                  if (icon != null) Icon(icon, color: Colors.grey, size: 20),
+                  Expanded(child: Text(controller.text.isEmpty ? "00:00" : controller.text, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black))),
+                  if (icon != null) Icon(icon, color: Colors.black54, size: 18),
                 ],
               ),
             ),
@@ -482,17 +484,18 @@ class _NptEntryPageState extends State<NptEntryPage> {
     return SizedBox(
       width: width,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 6),
+        Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.black)),
+        const SizedBox(height: 4),
         Container(
-          height: 44,
+          height: 38,
           alignment: Alignment.centerLeft,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color: Colors.grey.shade200,
-            borderRadius: BorderRadius.circular(14),
+            color: const Color(0xFFE8EAED),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey.shade400),
           ),
-          child: Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+          child: Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black)),
         ),
       ]),
     );
