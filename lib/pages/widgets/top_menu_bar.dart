@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../npt_entry_page.dart';
@@ -16,14 +17,11 @@ class _TopMenuBarState extends State<TopMenuBar>
   late Animation<double> _fade;
   late Animation<Offset> _slide;
 
-  String? userId; // store logged-in staff ID
+  String? userId;
 
-  // Keys for desktop buttons
   final GlobalKey _workStudyKey = GlobalKey();
   final GlobalKey _dashboardKey = GlobalKey();
   final GlobalKey _adminKey = GlobalKey();
-
-  // Key for mobile hamburger
   final GlobalKey _menuIconKey = GlobalKey();
 
   @override
@@ -35,7 +33,7 @@ class _TopMenuBarState extends State<TopMenuBar>
     );
     _fade = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
     _slide =
-        Tween(begin: const Offset(0, -0.05), end: Offset.zero)
+        Tween(begin: const Offset(0, -0.04), end: Offset.zero)
             .animate(_controller);
 
     _loadUserId();
@@ -43,12 +41,10 @@ class _TopMenuBarState extends State<TopMenuBar>
 
   Future<void> _loadUserId() async {
     final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      userId = prefs.getString('userId');
-    });
+    setState(() => userId = prefs.getString('userId'));
   }
 
-  // ================= DROPDOWN (DESKTOP & MOBILE) =================
+  // ================= DROPDOWN =================
   void _showDropdown(
       BuildContext context, GlobalKey key, List<DropdownItem> items) {
     _removeDropdown();
@@ -57,20 +53,12 @@ class _TopMenuBarState extends State<TopMenuBar>
     final pos = box.localToGlobal(Offset.zero);
     final size = box.size;
 
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = screenWidth < 720;
+    final isMobile = MediaQuery.of(context).size.width < 720;
+    const double menuWidth = 190;
 
-    const double desktopWidth = 180;
-    final double menuWidth = isMobile ? 180 : desktopWidth;
-
-    double left;
-
-    if (isMobile) {
-      left = pos.dx + size.width - menuWidth;
-      if (left < 8) left = 8;
-    } else {
-      left = pos.dx;
-    }
+    double left = isMobile
+        ? (pos.dx + size.width - menuWidth).clamp(8, double.infinity)
+        : pos.dx;
 
     _overlay = OverlayEntry(
       builder: (_) => GestureDetector(
@@ -80,7 +68,7 @@ class _TopMenuBarState extends State<TopMenuBar>
           children: [
             Positioned(
               left: left,
-              top: pos.dy + size.height + 6,
+              top: pos.dy + size.height + 8,
               width: menuWidth,
               child: Material(
                 color: Colors.transparent,
@@ -88,21 +76,37 @@ class _TopMenuBarState extends State<TopMenuBar>
                   opacity: _fade,
                   child: SlideTransition(
                     position: _slide,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.blueGrey.shade900.withOpacity(.96),
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Colors.black45,
-                            blurRadius: 14,
-                            offset: Offset(0, 6),
-                          )
-                        ],
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: items.map(_menuItem).toList(),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                const Color(0xFF0F172A).withOpacity(0.85),
+                                const Color(0xFF020617).withOpacity(0.92),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.12),
+                            ),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x55000000),
+                                blurRadius: 24,
+                                offset: Offset(0, 14),
+                              )
+                            ],
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: items.map(_menuItem).toList(),
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -120,20 +124,30 @@ class _TopMenuBarState extends State<TopMenuBar>
 
   Widget _menuItem(DropdownItem item) {
     return InkWell(
-      borderRadius: BorderRadius.circular(12),
       onTap: () {
         _removeDropdown();
         item.onTap();
       },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        decoration: const BoxDecoration(
+          border: Border(
+            bottom: BorderSide(color: Color(0x22FFFFFF)),
+          ),
+        ),
         child: Row(
           children: [
-            const Icon(Icons.chevron_right, size: 18, color: Colors.white70),
-            const SizedBox(width: 6),
+            const Icon(Icons.arrow_right_rounded,
+                size: 20, color: Color(0xFF93C5FD)),
+            const SizedBox(width: 8),
             Text(
               item.label,
-              style: const TextStyle(color: Colors.white, fontSize: 15),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14.5,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.3,
+              ),
             ),
           ],
         ),
@@ -147,7 +161,7 @@ class _TopMenuBarState extends State<TopMenuBar>
     _overlay = null;
   }
 
-  // ================= MOBILE DROPDOWN =================
+  // ================= MOBILE =================
   void _openMobileDropdown(BuildContext context) {
     List<DropdownItem> items = [
       DropdownItem(
@@ -161,7 +175,6 @@ class _TopMenuBarState extends State<TopMenuBar>
       ),
     ];
 
-    // Only staff ID 540150 can see admin/report
     if (userId == "540150") {
       items.addAll([
         DropdownItem(
@@ -175,17 +188,12 @@ class _TopMenuBarState extends State<TopMenuBar>
       ]);
     }
 
-    items.add(
-      DropdownItem(
-        label: "Logout",
-        onTap: _logout,
-      ),
-    );
+    items.add(DropdownItem(label: "Logout", onTap: _logout));
 
     _showDropdown(context, _menuIconKey, items);
   }
 
-  // ✅ LOGOUT
+  // ================= LOGOUT =================
   Future<void> _logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('userId');
@@ -203,23 +211,25 @@ class _TopMenuBarState extends State<TopMenuBar>
         height: 56,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
-          color: Colors.blueGrey.shade900,
+          gradient: const LinearGradient(
+            colors: [Color(0xFF020617), Color(0xFF0F172A)],
+          ),
           boxShadow: const [
-            BoxShadow(color: Colors.black45, blurRadius: 6),
+            BoxShadow(color: Color(0x44000000), blurRadius: 10),
           ],
         ),
         child: Row(
           children: [
             ShaderMask(
               shaderCallback: (rect) => const LinearGradient(
-                colors: [Colors.white, Colors.blueAccent],
+                colors: [Color(0xFF60A5FA), Color(0xFF38BDF8)],
               ).createShader(rect),
               child: const Text(
                 "TrackAll",
                 style: TextStyle(
                   fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.1,
                   color: Colors.white,
                 ),
               ),
@@ -230,7 +240,7 @@ class _TopMenuBarState extends State<TopMenuBar>
             if (isMobile)
               IconButton(
                 key: _menuIconKey,
-                icon: const Icon(Icons.menu, color: Colors.white),
+                icon: const Icon(Icons.menu_rounded, color: Colors.white),
                 onPressed: () => _openMobileDropdown(context),
               ),
 
@@ -265,9 +275,9 @@ class _TopMenuBarState extends State<TopMenuBar>
               const SizedBox(width: 16),
               ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.redAccent.shade200,
+                  backgroundColor: const Color(0xFFEF4444),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
+                      borderRadius: BorderRadius.circular(10)),
                 ),
                 onPressed: _logout,
                 icon: const Icon(Icons.logout, size: 18),
@@ -293,9 +303,10 @@ class _TopMenuBarState extends State<TopMenuBar>
         child: Text(
           text,
           style: const TextStyle(
-            fontSize: 16,
+            fontSize: 15.5,
             color: Colors.white,
             fontWeight: FontWeight.w500,
+            letterSpacing: 0.4,
           ),
         ),
       ),

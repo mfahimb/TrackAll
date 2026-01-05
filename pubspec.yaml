@@ -28,6 +28,8 @@ flutter:
 
   assets:
     - assets/icon/trackall_icon.png
+    - assets/icon/home_app.jpg
+    - assets/icon/1691480144736.jpg
 
 # 🔥 APP ICON CONFIG (ROOT LEVEL – NOT under flutter)
 flutter_icons:
