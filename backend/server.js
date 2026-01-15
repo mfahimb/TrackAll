@@ -9,7 +9,7 @@ app.use(cors());
 app.use(express.json());
 
 // ---------------------------
-// LOGIN API (ORDS AUTH) - FIXED
+// LOGIN API (ORDS AUTH) - FINAL FIX
 // ---------------------------
 app.post("/login", async (req, res) => {
   try {
@@ -22,15 +22,17 @@ app.post("/login", async (req, res) => {
       });
     }
 
+    const payload = new URLSearchParams({
+      p_username: username,
+      p_password: password,
+    }).toString();
+
     const apiResponse = await axios.post(
       "https://ego.rflgroupbd.com:8077/ords/rpro/xxtrac_al/login_auth",
-      {
-        p_username: username,
-        p_password: password,
-      },
+      payload,
       {
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": "application/x-www-form-urlencoded",
         },
         timeout: 10000,
       }
@@ -55,7 +57,10 @@ app.post("/login", async (req, res) => {
       message: "Login failed",
     });
   } catch (error) {
-    console.error("Login API error:", error.response?.data || error.message);
+    console.error(
+      "Login API error:",
+      error.response?.data || error.message
+    );
 
     res.status(500).json({
       success: false,
