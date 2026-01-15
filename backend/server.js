@@ -32,7 +32,7 @@ app.post("/login", async (req, res) => {
       payload,
       {
         headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
+          "Content-Type": "application/json",
         },
         timeout: 10000,
       }
