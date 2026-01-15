@@ -9,7 +9,7 @@ app.use(cors());
 app.use(express.json());
 
 // ---------------------------
-// LOGIN API (ORDS AUTH)
+// LOGIN API (ORDS AUTH) - FIXED
 // ---------------------------
 app.post("/login", async (req, res) => {
   try {
@@ -24,17 +24,18 @@ app.post("/login", async (req, res) => {
 
     const apiResponse = await axios.post(
       "https://ego.rflgroupbd.com:8077/ords/rpro/xxtrac_al/login_auth",
-      null,
       {
-        params: {
-          p_username: username,
-          p_password: password,
+        p_username: username,
+        p_password: password,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
         },
         timeout: 10000,
       }
     );
 
-    // ORDS returns either Success or error key
     if (apiResponse.data?.Success) {
       return res.json({
         success: true,
@@ -49,13 +50,12 @@ app.post("/login", async (req, res) => {
       });
     }
 
-    // Fallback
     res.status(401).json({
       success: false,
       message: "Login failed",
     });
   } catch (error) {
-    console.error("Login API error:", error.message);
+    console.error("Login API error:", error.response?.data || error.message);
 
     res.status(500).json({
       success: false,
@@ -63,6 +63,7 @@ app.post("/login", async (req, res) => {
     });
   }
 });
+
 
 // ---------------------------
 // NPT ENTRY (file-based storage)
