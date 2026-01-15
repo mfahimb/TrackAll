@@ -11,6 +11,9 @@ app.use(express.json());
 // ---------------------------
 // LOGIN API (ORDS AUTH) - FINAL FIX
 // ---------------------------
+// ---------------------------
+// LOGIN API (ORDS AUTH) - FINAL CORRECT
+// ---------------------------
 app.post("/login", async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -22,23 +25,22 @@ app.post("/login", async (req, res) => {
       });
     }
 
-    const payload = new URLSearchParams({
-      p_username: username,
-      p_password: password,
-    }).toString();
+    const apiResponse = await axios({
+      method: "post",
+      url: "https://ego.rflgroupbd.com:8077/ords/rpro/xxtrac_al/login_auth",
+      params: {
+        p_username: username,
+        p_password: password,
+      },
+      headers: {
+        "Content-Type": "application/json",
+      },
+      data: null, // 🔴 IMPORTANT: NO BODY
+      timeout: 10000,
+      validateStatus: () => true, // ORDS may return 200 with error JSON
+    });
 
-    const apiResponse = await axios.post(
-      "https://ego.rflgroupbd.com:8077/ords/rpro/xxtrac_al/login_auth",
-      payload,
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-        timeout: 10000,
-      }
-    );
-
-    if (apiResponse.data?.Success) {
+    if (apiResponse.status === 200 && apiResponse.data?.Success) {
       return res.json({
         success: true,
         message: apiResponse.data.Success,
@@ -54,13 +56,10 @@ app.post("/login", async (req, res) => {
 
     res.status(401).json({
       success: false,
-      message: "Login failed",
+      message: "Invalid username or password",
     });
   } catch (error) {
-    console.error(
-      "Login API error:",
-      error.response?.data || error.message
-    );
+    console.error("Login API error:", error.message);
 
     res.status(500).json({
       success: false,
