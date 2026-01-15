@@ -9,24 +9,58 @@ app.use(cors());
 app.use(express.json());
 
 // ---------------------------
-// LOGIN API (proxy to HRIS)
+// LOGIN API (ORDS AUTH)
 // ---------------------------
 app.post("/login", async (req, res) => {
   try {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Username or password missing",
+      });
+    }
+
     const apiResponse = await axios.post(
-      "http://hrisapi.prangroup.com:8083/v1/Login/HrisLogin",
-      req.body,
+      "https://ego.rflgroupbd.com:8077/ords/rpro/xxtrac_al/login_auth",
+      null,
       {
-        headers: {
-          "S_KEYL": "RxsJ4LQdkVFTv37rYfW9b6",
-          "Authorization": "Basic YXV0aDoxMlByYW5AMTIzNDU2JA==",
+        params: {
+          p_username: username,
+          p_password: password,
         },
+        timeout: 10000,
       }
     );
-    res.json(apiResponse.data);
+
+    // ORDS returns either Success or error key
+    if (apiResponse.data?.Success) {
+      return res.json({
+        success: true,
+        message: apiResponse.data.Success,
+      });
+    }
+
+    if (apiResponse.data?.error) {
+      return res.status(401).json({
+        success: false,
+        message: apiResponse.data.error,
+      });
+    }
+
+    // Fallback
+    res.status(401).json({
+      success: false,
+      message: "Login failed",
+    });
   } catch (error) {
     console.error("Login API error:", error.message);
-    res.status(500).json({ error: "HRIS API failed" });
+
+    res.status(500).json({
+      success: false,
+      message: "Authentication service unavailable",
+    });
   }
 });
 
@@ -38,7 +72,8 @@ const nptFilePath = path.join(dataDir, "npt.json");
 
 // Ensure data folder and file exist
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir);
-if (!fs.existsSync(nptFilePath)) fs.writeFileSync(nptFilePath, JSON.stringify([]));
+if (!fs.existsSync(nptFilePath))
+  fs.writeFileSync(nptFilePath, JSON.stringify([]));
 
 // Load NPT data
 function loadNptData() {
@@ -68,7 +103,7 @@ app.post("/npt-entry", (req, res) => {
     const entries = loadNptData();
 
     const newEntry = {
-      id: Date.now(), // numeric ID
+      id: Date.now(),
       buildingSection: req.body.buildingSection || "",
       operationCategory: req.body.operationCategory || "",
       operation: req.body.operation || "",
@@ -122,7 +157,6 @@ app.put("/npt-entry/:id", (req, res) => {
       return res.status(404).json({ success: false, message: "Entry not found" });
     }
 
-    // Update only provided fields
     entries[index] = {
       ...entries[index],
       ...req.body,
@@ -130,7 +164,11 @@ app.put("/npt-entry/:id", (req, res) => {
 
     saveNptData(entries);
 
-    res.json({ success: true, message: "Updated successfully", data: entries[index] });
+    res.json({
+      success: true,
+      message: "Updated successfully",
+      data: entries[index],
+    });
   } catch (err) {
     console.error("PUT /npt-entry/:id error:", err);
     res.status(500).json({ success: false, message: "Failed to update entry" });
@@ -160,4 +198,6 @@ app.delete("/npt-entry/:id", (req, res) => {
 
 // ---------------------------
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`Proxy + NPT API running on port ${PORT}`));
+app.listen(PORT, () =>
+  console.log(`Proxy + NPT API running on port ${PORT}`)
+);

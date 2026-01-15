@@ -15,16 +15,16 @@ class _LoginPageState extends State<LoginPage> {
   final usernameController = TextEditingController();
   final passwordController = TextEditingController();
   bool loading = false;
-  bool rememberMe = false; // Remember Me state
+  bool rememberMe = false;
 
   @override
   void initState() {
     super.initState();
-    _loadSavedCredentials(); // Load saved credentials
-    _checkSession(); // Check if session is valid
+    _loadSavedCredentials();
+    _checkSession();
   }
 
-  // Auto-fill credentials if "Remember Me" was previously checked
+  // Load saved credentials
   Future<void> _loadSavedCredentials() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -34,7 +34,7 @@ class _LoginPageState extends State<LoginPage> {
     });
   }
 
-  // Check if a valid session exists
+  // Check existing session
   Future<void> _checkSession() async {
     final prefs = await SharedPreferences.getInstance();
     final userId = prefs.getString('userId');
@@ -42,11 +42,9 @@ class _LoginPageState extends State<LoginPage> {
 
     if (userId != null && loginTime != null) {
       final now = DateTime.now().millisecondsSinceEpoch;
-      // Session valid for 1 hour
       if (now - loginTime < 3600 * 1000) {
-        Navigator.pushReplacementNamed(context, '/home');
+        Navigator.pushReplacementNamed(context, '/company_select');
       } else {
-        // Clear only session data, keep remembered credentials
         await prefs.remove('userId');
         await prefs.remove('loginTime');
       }
@@ -64,21 +62,23 @@ class _LoginPageState extends State<LoginPage> {
       final response = await http.post(
         url,
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"username": username, "password": password}),
+        body: jsonEncode({
+          "p_username": username,
+          "p_password": password,
+        }),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
-        if (data["succesS_CODE"] == "2000") {
+        if (data["Success"] == "Login Success") {
           final prefs = await SharedPreferences.getInstance();
 
-          // Save actual userId from backend (not username)
-          final userId = data["userId"] ?? username; // fallback to username if backend doesn't return
-          await prefs.setString('userId', userId);
-          await prefs.setInt('loginTime', DateTime.now().millisecondsSinceEpoch);
+          await prefs.setString('userId', username);
+          await prefs.setInt(
+              'loginTime', DateTime.now().millisecondsSinceEpoch);
 
-          // Remember Me logic
+          // Remember Me
           if (rememberMe) {
             await prefs.setString('remembered_user', username);
             await prefs.setString('remembered_pass', password);
@@ -89,9 +89,9 @@ class _LoginPageState extends State<LoginPage> {
             await prefs.setBool('remember_me', false);
           }
 
-          Navigator.pushReplacementNamed(context, '/home');
+          Navigator.pushReplacementNamed(context, '/company_select');
         } else {
-          showMessage(data["succesS_MESSAGE"] ?? "Invalid credentials");
+          showMessage(data["error"] ?? "Invalid username or password");
         }
       } else {
         showMessage("Server error: ${response.statusCode}");
@@ -117,7 +117,7 @@ class _LoginPageState extends State<LoginPage> {
         child: SingleChildScrollView(
           child: Column(
             children: [
-              // ===== TOP PREMIUM SKY BLUE AREA =====
+              // ===== TOP AREA =====
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 48),
@@ -135,17 +135,23 @@ class _LoginPageState extends State<LoginPage> {
                 child: Column(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 28, vertical: 14),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.55),
                         borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: Colors.white.withOpacity(0.9)),
+                        border:
+                            Border.all(color: Colors.white.withOpacity(0.9)),
                         boxShadow: const [
-                          BoxShadow(color: Color(0x33000000), blurRadius: 18, offset: Offset(0, 8)),
+                          BoxShadow(
+                              color: Color(0x33000000),
+                              blurRadius: 18,
+                              offset: Offset(0, 8)),
                         ],
                       ),
                       child: ShaderMask(
-                        shaderCallback: (bounds) => const LinearGradient(
+                        shaderCallback: (bounds) =>
+                            const LinearGradient(
                           colors: [Color(0xFF2196F3), Color(0xFF00BCD4)],
                         ).createShader(bounds),
                         child: const Text(
@@ -162,7 +168,10 @@ class _LoginPageState extends State<LoginPage> {
                     const SizedBox(height: 14),
                     const Text(
                       "Smart tracking. Better control.",
-                      style: TextStyle(fontSize: 15, color: Color(0xFF5C7C99), letterSpacing: 0.6),
+                      style: TextStyle(
+                          fontSize: 15,
+                          color: Color(0xFF5C7C99),
+                          letterSpacing: 0.6),
                     ),
                   ],
                 ),
@@ -175,22 +184,18 @@ class _LoginPageState extends State<LoginPage> {
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Column(
                   children: [
-                    // Username
                     _buildTextField(
                       controller: usernameController,
                       icon: Icons.person,
                       hint: "User ID",
                     ),
                     const SizedBox(height: 20),
-                    // Password
                     _buildTextField(
                       controller: passwordController,
                       icon: Icons.lock,
                       hint: "Password",
                       isPassword: true,
                     ),
-
-                    // Remember Me Checkbox
                     Row(
                       children: [
                         Checkbox(
@@ -202,14 +207,13 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                         const Text(
                           "Remember Me",
-                          style: TextStyle(color: Color(0xFF5C7C99), fontWeight: FontWeight.w500),
+                          style: TextStyle(
+                              color: Color(0xFF5C7C99),
+                              fontWeight: FontWeight.w500),
                         ),
                       ],
                     ),
-
                     const SizedBox(height: 20),
-
-                    // Login Button
                     loading
                         ? const LoadingIndicator()
                         : SizedBox(
@@ -218,13 +222,17 @@ class _LoginPageState extends State<LoginPage> {
                             child: ElevatedButton(
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF5C9DED),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16)),
                                 elevation: 3,
                               ),
                               onPressed: login,
                               child: const Text(
                                 "Login",
-                                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: Colors.white),
+                                style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white),
                               ),
                             ),
                           ),
@@ -238,7 +246,6 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  // Helper to keep the UI clean
   Widget _buildTextField({
     required TextEditingController controller,
     required IconData icon,
@@ -249,7 +256,9 @@ class _LoginPageState extends State<LoginPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [BoxShadow(color: Color(0x22000000), blurRadius: 10)],
+        boxShadow: const [
+          BoxShadow(color: Color(0x22000000), blurRadius: 10)
+        ],
       ),
       child: TextField(
         controller: controller,
