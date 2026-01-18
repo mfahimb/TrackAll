@@ -31,12 +31,67 @@ class _SOSPageState extends State<SOSPage> with SingleTickerProviderStateMixin {
     });
   }
 
+  Future<void> _saveLineNotReady(String lineId, DateTime start) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('nr_$lineId', start.toIso8601String());
+  }
+
+  Future<void> _removeLineNotReady(String lineId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('nr_$lineId');
+  }
+
+  Future<DateTime?> _loadLineNotReady(String lineId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final val = prefs.getString('nr_$lineId');
+    if (val == null) return null;
+    return DateTime.tryParse(val);
+  }
+
   DateTime? parseDatabaseDate(String? dbValue) {
     if (dbValue == null || dbValue.isEmpty) return null;
     try {
       final localTimeStr = dbValue.replaceAll('Z', '');
       return DateTime.parse(localTimeStr);
     } catch (e) {
+      return null;
+    }
+  }
+
+  DateTime? parseServerDate(String? dbValue) {
+    if (dbValue == null || dbValue.isEmpty) return null;
+    try {
+      return DateTime.parse(dbValue.replaceAll('Z', ''));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // 🔑 NEW: Parse HH:MM:SS format from backend
+  Duration? parseDowntime(String? downtime) {
+    if (downtime == null || downtime.isEmpty) return null;
+    
+    try {
+      // Parse "00:00:15" format
+      final parts = downtime.split(':');
+      if (parts.length != 3) return null;
+      
+      final hours = int.tryParse(parts[0]) ?? 0;
+      final minutes = int.tryParse(parts[1]) ?? 0;
+      final seconds = int.tryParse(parts[2]) ?? 0;
+      
+      final duration = Duration(
+        hours: hours,
+        minutes: minutes,
+        seconds: seconds,
+      );
+      
+      if (duration.inSeconds <= 0) return null;
+      
+      print("✅ Parsed downtime '$downtime' = ${duration.inSeconds} seconds");
+      return duration;
+    } catch (e) {
+      print("❌ Error parsing downtime '$downtime': $e");
       return null;
     }
   }
@@ -48,26 +103,47 @@ class _SOSPageState extends State<SOSPage> with SingleTickerProviderStateMixin {
 
     try {
       final result = await _lovService.fetchSosLines(appUserId: userId);
-      
-      setState(() {
-        // Map API result to SOSLine
-        lines = result
-            .where((e) => e['LINE_PRE_STAT']?.toString() == 'Y') // <-- only include 'Y'
-            .map<SOSLine>((e) {
-              return SOSLine(
-                id: e['LINE_ID'].toString(),
-                name: (e['LINE_NAME'] ?? 'Unknown').toString(),
-                initialStatus: e['LINE_STAT']?.toString() ?? 'Ready',
-                backendNotReadyStart: parseDatabaseDate(e['LSH_DATE']?.toString()),
-                staffId: e['STAFF_ID']?.toString() ?? 'N/A',
-                lastComment: e['LSH_CMNT']?.toString() ?? '', // <-- comment included
-                refreshParent: () => setState(() {}),
-              );
-            }).toList();
 
+      // 🔍 DEBUG: Print raw backend response
+      print("=== BACKEND RESPONSE ===");
+      for (var e in result) {
+        print("Line ${e['LINE_ID']}: Status=${e['LINE_STAT']}, DOWNTIME=${e['DOWNTIME']}");
+      }
+
+      final List<SOSLine> loadedLines = [];
+      for (final e in result.where((e) => e['LINE_PRE_STAT']?.toString() == 'Y')) {
+        DateTime? backendNotReadyStart = parseDatabaseDate(e['LSH_DATE']?.toString());
+        final savedStart = await _loadLineNotReady(e['LINE_ID'].toString());
+        
+        if (savedStart != null) {
+          backendNotReadyStart = savedStart;
+        }
+
+        // 🔑 Parse DOWNTIME in HH:MM:SS format from backend
+        final lastNRDuration = parseDowntime(e['DOWNTIME']?.toString());
+        
+        // 🔍 DEBUG: Check what we parsed
+        print("Line ${e['LINE_ID']}: Parsed duration = ${lastNRDuration?.inSeconds} seconds");
+
+        loadedLines.add(SOSLine(
+          id: e['LINE_ID'].toString(),
+          name: (e['LINE_NAME'] ?? 'Unknown').toString(),
+          initialStatus: e['LINE_STAT']?.toString() ?? 'Ready',
+          backendNotReadyStart: backendNotReadyStart,
+          serverNow: parseServerDate(e['SYSDATE']?.toString()),
+          staffId: e['STAFF_ID']?.toString() ?? 'N/A',
+          lastComment: e['LSH_CMNT']?.toString() ?? '',
+          lastNotReadyElapsed: lastNRDuration,
+          refreshParent: () => setState(() {}),
+        ));
+      }
+
+      setState(() {
+        lines = loadedLines;
         loading = false;
       });
     } catch (e) {
+      print("ERROR loading lines: $e");
       setState(() => loading = false);
     }
   }
@@ -86,17 +162,22 @@ class _SOSPageState extends State<SOSPage> with SingleTickerProviderStateMixin {
         final index = lines.indexWhere((l) => l.id == e['LINE_ID'].toString());
         if (index == -1) continue;
 
+        // 🔑 Parse DOWNTIME from backend
+        final lastNRDuration = parseDowntime(e['DOWNTIME']?.toString());
+
         lines[index].updateStatusFromBackend(
           e['LINE_STAT']?.toString() ?? 'Ready',
           parseDatabaseDate(e['LSH_DATE']?.toString()),
           e['STAFF_ID']?.toString() ?? 'N/A',
-          e['LSH_CMNT']?.toString() ?? '', // <-- include comment on refresh
+          parseServerDate(e['SYSDATE']?.toString()),
+          e['LSH_CMNT']?.toString() ?? '',
+          lastNRDuration,
         );
       }
 
       setState(() {});
     } catch (e) {
-      // Silent fail
+      print("ERROR refreshing: $e");
     }
   }
 
@@ -250,13 +331,11 @@ class _SOSPageState extends State<SOSPage> with SingleTickerProviderStateMixin {
                                   final userId = prefs.getString('userId') ?? "1";
                                   final companyId = prefs.getString('selected_company_id') ?? "55";
 
-                                  // Update local UI immediately
                                   line.setStatus(selectedStatus, () => setState(() {}));
                                   line.lastComment = commentController.text;
 
                                   Navigator.pop(context);
 
-                                  // Call backend API to save status and comment
                                   try {
                                     bool success = await _lovService.saveSosLine(
                                       action: "I",
@@ -267,12 +346,17 @@ class _SOSPageState extends State<SOSPage> with SingleTickerProviderStateMixin {
                                       company: companyId,
                                     );
 
-                                    if (!success) {
+                                    if (success) {
+                                      print("✅ Status saved to backend");
+                                      // Refresh to get updated DOWNTIME from backend
+                                      await _loadSOSLines();
+                                    } else {
                                       ScaffoldMessenger.of(context).showSnackBar(
                                         const SnackBar(content: Text('Failed to update line on server')),
                                       );
                                     }
                                   } catch (e) {
+                                    print("❌ Error saving: $e");
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(content: Text('Error: $e')),
                                     );
@@ -395,6 +479,7 @@ class SOSLine {
   final String name;
   String status;
   DateTime? notReadyStart;
+  DateTime? serverNow;
   Duration elapsed = Duration.zero;
   Duration lastNotReadyElapsed = Duration.zero;
   String staffId;
@@ -402,16 +487,47 @@ class SOSLine {
   Timer? _timer;
   final VoidCallback? refreshParent;
 
+  Future<void> _saveLineNotReady(String lineId, DateTime start) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('nr_$lineId', start.toIso8601String());
+  }
+
+  Future<void> _removeLineNotReady(String lineId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('nr_$lineId');
+  }
+
+  void setStatus(String value, VoidCallback refresh) {
+    status = value;
+    if (status == "Not Ready") {
+      notReadyStart ??= DateTime.now();
+      _startTimer();
+      _saveLineNotReady(id, notReadyStart!);
+    } else {
+      _stopTimer();
+      _removeLineNotReady(id);
+    }
+    refresh();
+  }
+
   SOSLine({
     required this.id,
     required this.name,
     required String initialStatus,
     this.lastComment = '',
     DateTime? backendNotReadyStart,
+    this.serverNow,
     this.staffId = 'N/A',
+    Duration? lastNotReadyElapsed,
     this.refreshParent,
   }) : status = initialStatus {
-    if (status == "Not Ready") {
+    // Set last NR duration from backend
+    if (lastNotReadyElapsed != null) {
+      this.lastNotReadyElapsed = lastNotReadyElapsed;
+      print("✅ Line $id: Set lastNRElapsed = ${lastNotReadyElapsed.inSeconds}s from backend");
+    }
+
+    if (status == "Not Ready" && backendNotReadyStart != null) {
       notReadyStart = backendNotReadyStart;
       _startTimer();
     }
@@ -420,66 +536,80 @@ class SOSLine {
   void updateStatusFromBackend(
     String value,
     DateTime? backendStart,
-    String sId, [
+    String sId,
+    DateTime? serverTime, [
     String comment = '',
+    Duration? backendLastNRDuration,
   ]) {
+    final oldStatus = status;
     status = value;
     staffId = sId;
 
-    // Only update comment if backend sent something
+    if (serverTime != null) {
+      serverNow = serverTime;
+    }
+
     if (comment.isNotEmpty) lastComment = comment;
 
     if (status == "Not Ready") {
-      if (backendStart != null) notReadyStart = backendStart;
-      _startTimer();
-    } else {
-      _stopTimer();
-    }
-    refreshParent?.call();
-  }
+      notReadyStart ??= backendStart;
 
-  void setStatus(String value, VoidCallback refresh) {
-    status = value;
-    if (status == "Not Ready") {
-      notReadyStart ??= DateTime.now();
+      if (notReadyStart != null && serverNow != null) {
+        elapsed = serverNow!.difference(notReadyStart!);
+        if (elapsed.isNegative) elapsed = Duration.zero;
+      }
+
       _startTimer();
     } else {
+      // Line is Ready - use backend DOWNTIME
+      if (backendLastNRDuration != null) {
+        lastNotReadyElapsed = backendLastNRDuration;
+        print("✅ Line $id: Updated lastNRElapsed = ${backendLastNRDuration.inSeconds}s from backend");
+      } else if (oldStatus == "Not Ready" && backendStart != null && serverNow != null) {
+        // Fallback calculation if backend doesn't provide
+        lastNotReadyElapsed = serverNow!.difference(backendStart);
+        if (lastNotReadyElapsed.isNegative) lastNotReadyElapsed = Duration.zero;
+        print("⚠️ Line $id: Calculated lastNRElapsed = ${lastNotReadyElapsed.inSeconds}s (backend didn't provide)");
+      }
+      
       _stopTimer();
     }
-    refresh();
+
+    refreshParent?.call();
   }
 
   void _startTimer() {
     if (_timer != null && _timer!.isActive) return;
-    notReadyStart ??= DateTime.now();
+    if (notReadyStart == null) return;
+
     _calculateElapsed();
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _calculateElapsed());
+    _timer = Timer.periodic(
+      const Duration(seconds: 1),
+      (_) => _calculateElapsed(),
+    );
   }
 
   void _calculateElapsed() {
     if (notReadyStart != null) {
-      final now = DateTime.now();
+      final now = serverNow ?? DateTime.now();
       elapsed = now.difference(notReadyStart!);
       if (elapsed.isNegative) elapsed = Duration.zero;
       refreshParent?.call();
     }
   }
 
- void _stopTimer() {
-  if (elapsed > Duration.zero) {
-    lastNotReadyElapsed = elapsed; // ✅ keep last NR time
+  void _stopTimer() {
+    _timer?.cancel();
+    _timer = null;
+    elapsed = Duration.zero;
+    notReadyStart = null;
   }
-  _timer?.cancel();
-  _timer = null;
-  elapsed = Duration.zero;
-  notReadyStart = null;
-}
-
 
   String get timeText {
     String twoDigits(int n) => n.toString().padLeft(2, '0');
     return "${twoDigits(elapsed.inHours)}:${twoDigits(elapsed.inMinutes % 60)}:${twoDigits(elapsed.inSeconds % 60)}";
   }
+
   String get lastTimeText {
     final d = lastNotReadyElapsed;
     String twoDigits(int n) => n.toString().padLeft(2, '0');
@@ -524,11 +654,9 @@ class _SOSCard extends StatelessWidget {
       onTap: onTap,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          // 🔑 responsive scale based on card height
           final h = constraints.maxHeight;
           final gapXS = h * 0.02;
           final gapS = h * 0.03;
-          final gapM = h * 0.04;
 
           return AnimatedContainer(
             duration: const Duration(milliseconds: 300),
@@ -561,8 +689,7 @@ class _SOSCard extends StatelessWidget {
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.red.withOpacity(
-                                    0.25 * pulseAnimation.value),
+                                color: Colors.red.withOpacity(0.25 * pulseAnimation.value),
                                 blurRadius: 15 + (5 * pulseAnimation.value),
                                 spreadRadius: 1.5 * pulseAnimation.value,
                               ),
@@ -575,11 +702,12 @@ class _SOSCard extends StatelessWidget {
 
                 Padding(
                   padding: const EdgeInsets.all(6),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min, // 🔑 prevents overflow
-                    children: [
-                      // ---------- HEADER ----------
+                  child: SingleChildScrollView(
+                    physics: const NeverScrollableScrollPhysics(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
                       Row(
                         children: [
                           Container(
@@ -588,30 +716,23 @@ class _SOSCard extends StatelessWidget {
                               color: Colors.white.withOpacity(0.2),
                               borderRadius: BorderRadius.circular(6),
                             ),
-                            child: Icon(
-                              line.statusIcon,
-                              color: Colors.white,
-                              size: 14,
-                            ),
+                            child: Icon(line.statusIcon, color: Colors.white, size: 14),
                           ),
                           const Spacer(),
                           if (isNotReady)
                             Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 4, vertical: 2),
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                               decoration: BoxDecoration(
                                 color: Colors.white.withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(5),
                               ),
-                              child: const Icon(Icons.timer,
-                                  color: Colors.white, size: 10),
+                              child: const Icon(Icons.timer, color: Colors.white, size: 10),
                             ),
                         ],
                       ),
 
                       SizedBox(height: gapXS),
 
-                      // ---------- LINE NAME ----------
                       Text(
                         line.name,
                         maxLines: 2,
@@ -641,11 +762,9 @@ class _SOSCard extends StatelessWidget {
 
                       SizedBox(height: gapS),
 
-                      // ---------- READY / NOT READY (RESPONSIVE + LARGE) ----------
                       Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
                           color: isNotReady
                               ? Colors.orange.withOpacity(0.85)
@@ -653,7 +772,7 @@ class _SOSCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: FittedBox(
-                          fit: BoxFit.scaleDown, // 🔑 prevents overflow
+                          fit: BoxFit.scaleDown,
                           child: Text(
                             line.status.toUpperCase(),
                             style: const TextStyle(
@@ -674,12 +793,9 @@ class _SOSCard extends StatelessWidget {
 
                       SizedBox(height: gapS),
 
-                      // ---------- TIME ----------
                       if (isNotReady || line.lastNotReadyElapsed > Duration.zero)
                         Text(
-                          isNotReady
-                              ? line.timeText
-                              : line.lastTimeText,
+                          isNotReady ? line.timeText : line.lastTimeText,
                           style: TextStyle(
                             fontSize: h * 0.075,
                             fontWeight: FontWeight.bold,
@@ -691,14 +807,11 @@ class _SOSCard extends StatelessWidget {
 
                       SizedBox(height: gapXS),
 
-                      // ---------- STAFF ----------
-                      if (isNotReady ||
-                          line.lastNotReadyElapsed > Duration.zero)
+                      if (isNotReady || line.lastNotReadyElapsed > Duration.zero)
                         Row(
                           children: [
                             Icon(Icons.person,
-                                color: Colors.white.withOpacity(0.7),
-                                size: 10),
+                                color: Colors.white.withOpacity(0.7), size: 10),
                             const SizedBox(width: 2),
                             Expanded(
                               child: Text(
@@ -714,21 +827,23 @@ class _SOSCard extends StatelessWidget {
                           ],
                         ),
 
-                      // ---------- COMMENT ----------
                       if (line.lastComment.isNotEmpty) ...[
                         SizedBox(height: gapXS),
-                        Text(
-                          line.lastComment,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: h * 0.042,
-                            color: Colors.white.withOpacity(0.8),
-                            fontStyle: FontStyle.italic,
+                        Flexible(
+                          child: Text(
+                            line.lastComment,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: h * 0.042,
+                              color: Colors.white.withOpacity(0.8),
+                              fontStyle: FontStyle.italic,
+                            ),
                           ),
                         ),
                       ],
                     ],
+                    ),
                   ),
                 ),
               ],

@@ -24,7 +24,6 @@ class _LoginPageState extends State<LoginPage> {
     _checkSession();
   }
 
-  // Load saved credentials
   Future<void> _loadSavedCredentials() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -34,7 +33,6 @@ class _LoginPageState extends State<LoginPage> {
     });
   }
 
-  // Check existing session
   Future<void> _checkSession() async {
     final prefs = await SharedPreferences.getInstance();
     final userId = prefs.getString('userId');
@@ -54,31 +52,33 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> login() async {
     setState(() => loading = true);
 
-    final url = Uri.parse("https://trackall-1.onrender.com/login");
     final username = usernameController.text.trim();
     final password = passwordController.text.trim();
 
     try {
+      final uri = Uri.parse(
+          "https://ego.rflgroupbd.com:8077/ords/rpro/xxtrac_al/login_auth");
+
       final response = await http.post(
-        url,
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "p_username": username,
-          "p_password": password,
-        }),
+        uri,
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Cache-Control": "no-store",
+          "Pragma": "no-cache",
+          "Expires": "0",
+        },
+        body: "p_username=$username&p_password=$password",
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
-        if (data["Success"] == "Login Success") {
+        if (data['Success'] != null) {
           final prefs = await SharedPreferences.getInstance();
-
           await prefs.setString('userId', username);
           await prefs.setInt(
               'loginTime', DateTime.now().millisecondsSinceEpoch);
 
-          // Remember Me
           if (rememberMe) {
             await prefs.setString('remembered_user', username);
             await prefs.setString('remembered_pass', password);
@@ -90,8 +90,10 @@ class _LoginPageState extends State<LoginPage> {
           }
 
           Navigator.pushReplacementNamed(context, '/company_select');
+        } else if (data['error'] != null) {
+          showMessage(data['error']);
         } else {
-          showMessage(data["error"] ?? "Invalid username or password");
+          showMessage("Invalid username or password");
         }
       } else {
         showMessage("Server error: ${response.statusCode}");
@@ -104,9 +106,8 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void showMessage(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg)),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(msg)));
   }
 
   @override
@@ -117,7 +118,6 @@ class _LoginPageState extends State<LoginPage> {
         child: SingleChildScrollView(
           child: Column(
             children: [
-              // ===== TOP AREA =====
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 48),
@@ -176,26 +176,21 @@ class _LoginPageState extends State<LoginPage> {
                   ],
                 ),
               ),
-
               const SizedBox(height: 40),
-
-              // ===== LOGIN FORM =====
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Column(
                   children: [
                     _buildTextField(
-                      controller: usernameController,
-                      icon: Icons.person,
-                      hint: "User ID",
-                    ),
+                        controller: usernameController,
+                        icon: Icons.person,
+                        hint: "User ID"),
                     const SizedBox(height: 20),
                     _buildTextField(
-                      controller: passwordController,
-                      icon: Icons.lock,
-                      hint: "Password",
-                      isPassword: true,
-                    ),
+                        controller: passwordController,
+                        icon: Icons.lock,
+                        hint: "Password",
+                        isPassword: true),
                     Row(
                       children: [
                         Checkbox(
@@ -256,9 +251,7 @@ class _LoginPageState extends State<LoginPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(color: Color(0x22000000), blurRadius: 10)
-        ],
+        boxShadow: const [BoxShadow(color: Color(0x22000000), blurRadius: 10)],
       ),
       child: TextField(
         controller: controller,

@@ -82,43 +82,48 @@ class LovService {
   }
 
   // ================= FETCH SOS LINES =================
-  Future<List<Map<String, String>>> fetchSosLines({
-    required String appUserId,
-  }) async {
-    try {
-      final selectedCompany = await _getSelectedCompany();
-      final params = <String, String>{
-        "P_QRYTYP": "SOS_LINE",
-        "P_APP_USER": appUserId,
-        "LOGIN_COMPANY": selectedCompany ?? "0",
+ // In your fetchSosLines method, add the new field mapping:
+
+// Update your fetchSosLines method to include DOWNTIME field:
+
+Future<List<Map<String, String>>> fetchSosLines({
+  required String appUserId,
+}) async {
+  try {
+    final selectedCompany = await _getSelectedCompany();
+    final params = <String, String>{
+      "P_QRYTYP": "SOS_LINE",
+      "P_APP_USER": appUserId,
+      "LOGIN_COMPANY": selectedCompany ?? "0",
+    };
+
+    final uri = Uri.parse(_baseUrl).replace(queryParameters: params);
+    final response = await http.get(uri);
+    if (response.statusCode != 200) return [];
+
+    final decoded = jsonDecode(response.body);
+    if (!decoded.containsKey("SOS_LINE")) return [];
+
+    final List list = decoded["SOS_LINE"] as List;
+
+    return list.map<Map<String, String>>((e) {
+      return {
+        "LINE_ID": e["LINE_ID"]?.toString() ?? "",
+        "LINE_NAME": e["LINE_NAME"]?.toString() ?? "Unknown",
+        "LINE_STAT": e["LINE_STAT"]?.toString() ?? "Ready",
+        "LSH_DATE": e["LSH_DATE"]?.toString() ?? "",
+        "STAFF_ID": e["LINE_LST_UPDATE"]?.toString() ?? "N/A",
+        "LSH_CMNT": e["LSH_CMNT"]?.toString() ?? "",
+        "LINE_PRE_STAT": e["LINE_PRE_STAT"]?.toString() ?? "N",
+        "SYSDATE": e["SYSDATE"]?.toString() ?? "",
+        // 🔑 NEW: DOWNTIME in HH:MM:SS format (e.g., "00:00:15")
+        "DOWNTIME": e["DOWNTIME"]?.toString() ?? "",
       };
-
-      final uri = Uri.parse(_baseUrl).replace(queryParameters: params);
-      final response = await http.get(uri);
-      if (response.statusCode != 200) return [];
-
-      final decoded = jsonDecode(response.body);
-      if (!decoded.containsKey("SOS_LINE")) return [];
-
-      final List list = decoded["SOS_LINE"] as List;
-
-      return list.map<Map<String, String>>((e) {
-        return {
-          "LINE_ID": e["LINE_ID"]?.toString() ?? "",
-          "LINE_NAME": e["LINE_NAME"]?.toString() ?? "Unknown",
-          "LINE_STAT": e["LINE_STAT"]?.toString() ?? "Ready",
-          "LSH_DATE": e["LSH_DATE"]?.toString() ?? "",
-          "STAFF_ID": e["LINE_LST_UPDATE"]?.toString() ?? "N/A",
-          "LSH_CMNT": e["LSH_CMNT"]?.toString() ?? "",
-          "LINE_PRE_STAT": e["LINE_PRE_STAT"]?.toString() ?? "N",
-          "SYSDATE": e["SYSDATE"]?.toString() ?? "",
-        };
-      }).toList();
-    } catch (e) {
-      return [];
-    }
+    }).toList();
+  } catch (e) {
+    return [];
   }
-
+}
   // ================= SAVE NPT ENTRY =================
   Future<bool> saveNptEntry({
     required DateTime entryDate,

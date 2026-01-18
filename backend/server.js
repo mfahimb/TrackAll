@@ -11,9 +11,6 @@ app.use(express.json());
 // ---------------------------
 // LOGIN API (ORDS AUTH) - FINAL FIX
 // ---------------------------
-// ---------------------------
-// LOGIN API (ORDS AUTH) - FINAL CORRECT
-// ---------------------------
 app.post("/login", async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -34,6 +31,9 @@ app.post("/login", async (req, res) => {
       },
       headers: {
         "Content-Type": "application/json",
+        "Cache-Control": "no-store",
+        "Pragma": "no-cache",
+        "Expires": "Sun, 27 Jul 1997 13:00:00 GMT",
       },
       data: null, // 🔴 IMPORTANT: NO BODY
       timeout: 10000,
@@ -68,7 +68,6 @@ app.post("/login", async (req, res) => {
   }
 });
 
-
 // ---------------------------
 // NPT ENTRY (file-based storage)
 // ---------------------------
@@ -77,8 +76,7 @@ const nptFilePath = path.join(dataDir, "npt.json");
 
 // Ensure data folder and file exist
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir);
-if (!fs.existsSync(nptFilePath))
-  fs.writeFileSync(nptFilePath, JSON.stringify([]));
+if (!fs.existsSync(nptFilePath)) fs.writeFileSync(nptFilePath, JSON.stringify([]));
 
 // Load NPT data
 function loadNptData() {
