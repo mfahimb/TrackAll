@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:trackall_app/pages/qc_entry_page.dart';
+
 import 'pages/login_page.dart' as login;
 import 'pages/company_select_page.dart';
 import 'pages/home_page.dart' as home;
 import 'pages/npt_entry_page.dart' as npt;
+import 'pages/ctl_npt_entry_page.dart' as ctl_npt;
 import 'pages/widgets/splash_screen.dart';
-import './pages/admin_panel.dart';
-import 'pages/sos_page.dart'; // ✅ ONLY ADDITION
+import 'pages/admin_panel.dart';
+import 'pages/sos_page.dart';
+import 'pages/production_entry_page.dart';
 
 void main() {
   runApp(const TrackAllApp());
@@ -29,9 +33,11 @@ class TrackAllApp extends StatelessWidget {
         '/company_select': (context) => const CompanySelectPage(),
         '/home': (context) => const home.HomePage(),
         '/npt_entry': (context) => const npt.NptEntryPage(),
+        '/ctl_npt_entry': (context) => const ctl_npt.CtlNptEntryPage(), // ✅ CTL NPT ENTRY ROUTE
         '/admin': (context) => const AdminPanelPage(),
-        '/sos': (context) => const SOSPage(), // ✅ ONLY ADDITION
-        //'/menu_assign': (context) => const MenuAssignPage(),
+        '/sos': (context) => const SOSPage(),
+        '/qc_entry': (context) => const QCEntryPage(), // ✅ QC ENTRY ROUTE
+        '/production_entry': (context) => const ProductionEntryPage(), // ✅ PRODUCTION ENTRY ROUTE
       },
     );
   }

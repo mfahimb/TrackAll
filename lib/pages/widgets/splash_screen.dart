@@ -15,7 +15,10 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late Animation<double> _animation;
+  late Animation<double> _fade;
+  late Animation<double> _scale;
+  late Animation<Color?> _color;
+  late Animation<Alignment> _align;
 
   @override
   void initState() {
@@ -23,55 +26,75 @@ class _SplashScreenState extends State<SplashScreen>
 
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 2),
+      duration: const Duration(milliseconds: 2400),
     );
 
-    _animation = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
+    _fade = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.0, 0.4, curve: Curves.easeIn),
+    );
+
+    _scale = Tween(begin: 0.9, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
+    );
+
+    _color = ColorTween(
+      begin: Colors.black,
+      end: const Color(0xFF1A237E),
+    ).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.35, 0.9, curve: Curves.easeInOut),
+      ),
+    );
+
+    // Center → near top (matches login card position)
+    _align = AlignmentTween(
+      begin: Alignment.center,
+      end: const Alignment(0, -0.55),
+    ).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.55, 1.0, curve: Curves.easeInOutCubic),
+      ),
+    );
+
     _controller.forward();
 
-    // Wait 3 seconds, then navigate
     Timer(const Duration(seconds: 3), () async {
       if (!mounted) return;
 
-      String route = await getInitialRoute();
+      final route = await getInitialRoute();
+      Widget next;
 
       switch (route) {
         case '/home':
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const home.HomePage()),
-          );
+          next = const home.HomePage();
           break;
-
         case '/npt_entry':
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const npt.NptEntryPage()),
-          );
+          next = const npt.NptEntryPage();
           break;
-
         default:
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const login.LoginPage()),
-          );
+          next = const login.LoginPage();
       }
+
+      Navigator.pushReplacement(
+        context,
+        PageRouteBuilder(
+          transitionDuration: const Duration(milliseconds: 600),
+          pageBuilder: (_, __, ___) => next,
+          transitionsBuilder: (_, animation, __, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+        ),
+      );
     });
   }
 
-  /// Determines the initial route based on login status and last visited page
   Future<String> getInitialRoute() async {
     final prefs = await SharedPreferences.getInstance();
-
-    // Check login status
     final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
-
-    if (!isLoggedIn) {
-      // Fresh install or logged out -> show login page
-      return '/login';
-    }
-
-    // Logged in users -> return last visited page or default to home
+    if (!isLoggedIn) return '/login';
     return prefs.getString('lastPage') ?? '/home';
   }
 
@@ -86,18 +109,27 @@ class _SplashScreenState extends State<SplashScreen>
     return Scaffold(
       body: Container(
         color: Colors.white,
-        child: Center(
-          child: ScaleTransition(
-            scale: _animation,
-            child: const Text(
-              "TrackAll",
-              style: TextStyle(
-                fontSize: 40,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-                letterSpacing: 2,
-              ),
-            ),
+        child: FadeTransition(
+          opacity: _fade,
+          child: AnimatedBuilder(
+            animation: _controller,
+            builder: (_, __) {
+              return Align(
+                alignment: _align.value,
+                child: ScaleTransition(
+                  scale: _scale,
+                  child: Text(
+                    "TrackAll",
+                    style: TextStyle(
+                      fontSize: 42, // EXACT match
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 2,
+                      color: _color.value,
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ),

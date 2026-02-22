@@ -5,14 +5,14 @@ import 'package:trackall_app/pages/widgets/top_menu_bar.dart';
 import '../services/lov_service.dart';
 import 'package:intl/intl.dart';
 
-class NptEntryPage extends StatefulWidget {
-  const NptEntryPage({super.key});
+class CtlNptEntryPage extends StatefulWidget {
+  const CtlNptEntryPage({super.key});
 
   @override
-  State<NptEntryPage> createState() => _NptEntryPageState();
+  State<CtlNptEntryPage> createState() => _CtlNptEntryPageState();
 }
 
-class _NptEntryPageState extends State<NptEntryPage> {
+class _CtlNptEntryPageState extends State<CtlNptEntryPage> {
   // ================= DATE =================
   DateTime selectedDate = DateTime.now();
   final TextEditingController _dateController = TextEditingController();
@@ -74,7 +74,7 @@ class _NptEntryPageState extends State<NptEntryPage> {
     loginUserId = prefs.getString("userId") ?? "0";
     selectedCompanyId = prefs.getString("selected_company_id") ?? "0";
 
-    final raw = prefs.getString('npt_list');
+    final raw = prefs.getString('ctl_npt_list');
     if (raw != null) nptList = List<Map<String, dynamic>>.from(jsonDecode(raw));
 
     try {
@@ -166,7 +166,7 @@ class _NptEntryPageState extends State<NptEntryPage> {
 
  // ================= SAVE HANDLER (UPDATED) =================
 Future<void> _handleSave() async {
-  // Build list of required fields (no GMT Loss Qty for this page)
+  // Build list of required fields including GMT Loss Qty
   List<dynamic> requiredFields = [
     buildingId,
     processId,
@@ -178,6 +178,7 @@ Future<void> _handleSave() async {
     causeLabel,
     smv,
     numberOfOperators,
+    gmtLossQty,
     remarks,
     startTime,
     endTime,
@@ -195,10 +196,11 @@ Future<void> _handleSave() async {
 
   // Validate numeric fields
   if (int.tryParse(numberOfOperators!) == null ||
-      double.tryParse(smv!) == null) {
+      double.tryParse(smv!) == null ||
+      double.tryParse(gmtLossQty!) == null) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text("SMV and Operators must be numeric"),
+        content: Text("SMV, Operators, and GMT Loss Qty must be numeric"),
         backgroundColor: Colors.red,
       ),
     );
@@ -219,7 +221,7 @@ Future<void> _handleSave() async {
     deptId: deptId!,
     responsibleUserId: responsibleUserId!,
     remarks: remarks!,
-    gmtLossQty: "0", // Always 0 for Downtime Entry
+    gmtLossQty: gmtLossQty!,
     staffId: loginUserId,
     numberOfOperators: numberOfOperators!,
   );
@@ -231,11 +233,12 @@ Future<void> _handleSave() async {
     "P_START_TIME": _startController.text,
     "P_END_TIME": _endController.text,
     "totalTime": totalTimeFormatted,
+    "gmtLossQty": gmtLossQty,
     "isSynced": success,
     "date": _dateController.text,
   });
 
-  await prefs.setString('npt_list', jsonEncode(nptList));
+  await prefs.setString('ctl_npt_list', jsonEncode(nptList));
 
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
@@ -257,10 +260,10 @@ Widget build(BuildContext context) {
     backgroundColor: const Color(0xFFF0F2F8),
     body: Column(
       children: [
-        // ✅ TOP MENU BAR ADDED (NEW)
+        // ✅ TOP MENU BAR ADDED
         const TopMenuBar(),
 
-        // ✅ PAGE CONTENT (UNCHANGED)
+        // ✅ PAGE CONTENT
         Expanded(
           child: LayoutBuilder(builder: (context, constraints) {
             final width = (constraints.maxWidth - 44) / 2;
@@ -357,6 +360,9 @@ Widget build(BuildContext context) {
                           responsibleUserLabel = label;
                         });
                       }, width),
+                      // ✅ GMT LOSS QTY FIELD (ALWAYS SHOWN IN CTL VERSION)
+                      _textField("GMT Loss Qty *", (v) => gmtLossQty = v, width,
+                          isNumber: true),
                       _textField(
                           "Remarks", (v) => remarks = v, width * 2 + 12),
                       const SizedBox(height: 12),

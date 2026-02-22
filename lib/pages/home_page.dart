@@ -48,7 +48,7 @@ class _HomePageState extends State<HomePage> {
           /// 🔹 Background image
           Positioned.fill(
             child: Image.asset(
-              'assets/icon/1691480144736.jpg',
+              'assets/icon/1691480144736.png',
               fit: BoxFit.cover,
             ),
           ),

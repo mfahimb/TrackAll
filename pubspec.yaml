@@ -15,6 +15,10 @@ dependencies:
   intl: ^0.18.1
   shared_preferences: ^2.5.3
   dropdown_search: ^6.0.3
+  image_picker: ^1.0.7
+  permission_handler: ^11.0.1
+  camera: ^0.10.5+5
+  path_provider: ^2.1.1
 
 dev_dependencies:
   flutter_test:
@@ -29,7 +33,7 @@ flutter:
   assets:
     - assets/icon/trackall_icon.png
     - assets/icon/home_app.jpg
-    - assets/icon/1691480144736.jpg
+    - assets/icon/1691480144736.png
 
 # 🔥 APP ICON CONFIG (ROOT LEVEL – NOT under flutter)
 flutter_icons:

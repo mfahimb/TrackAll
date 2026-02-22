@@ -20,7 +20,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.trackall_app"
-        minSdk = flutter.minSdkVersion
+        minSdk = flutter.minSdkVersion  // Updated for camera support
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

@@ -4,8 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import '../npt_entry_page.dart';
+import '../ctl_npt_entry_page.dart';
 import '../company_select_page.dart';
 import '../sos_page.dart';
+import '../qc_entry_page.dart';
+import '../production_entry_page.dart';  // ✅ NEW - Production Entry (Menu ID 11)
+import '../kanban_board_page.dart';
 
 class TopMenuBar extends StatefulWidget {
   const TopMenuBar({super.key});
@@ -67,7 +71,6 @@ class _TopMenuBarState extends State<TopMenuBar>
       if (resp.statusCode != 200) return [];
 
       final decoded = jsonDecode(resp.body);
-      // Assuming response is a List of menu objects
       final List list = decoded['MENU'] ?? [];
       return list.map<int>((e) => e['IDM_ID'] as int).toList();
     } catch (e) {
@@ -147,6 +150,11 @@ class _TopMenuBarState extends State<TopMenuBar>
   List<Widget> _buildMobileMenuItems() {
     final List<Widget> items = [];
 
+    final production = _productionItems();
+    if (production.isNotEmpty) {
+      items.add(_submenuItem("Production", production));
+    }
+
     final workStudy = _workStudyItems();
     if (workStudy.isNotEmpty) items.add(_submenuItem("Work Study", workStudy));
 
@@ -199,9 +207,12 @@ class _TopMenuBarState extends State<TopMenuBar>
         children: [
           const Icon(Icons.folder, size: 18, color: Color(0xFF93C5FD)),
           const SizedBox(width: 12),
-          Text(label,
-              style: const TextStyle(
-                  color: Colors.white, fontSize: 15, fontWeight: FontWeight.w500)),
+          Expanded(
+            child: Text(label,
+                style: const TextStyle(
+                    color: Colors.white, fontSize: 15, fontWeight: FontWeight.w500),
+                overflow: TextOverflow.ellipsis),
+          ),
         ],
       ),
       children: submenuItems
@@ -217,11 +228,14 @@ class _TopMenuBarState extends State<TopMenuBar>
                       const Icon(Icons.arrow_right_rounded,
                           size: 16, color: Color(0xFF60A5FA)),
                       const SizedBox(width: 10),
-                      Text(e.label,
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w400)),
+                      Expanded(
+                        child: Text(e.label,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w400),
+                            overflow: TextOverflow.ellipsis),
+                      ),
                     ],
                   ),
                 ),
@@ -230,9 +244,44 @@ class _TopMenuBarState extends State<TopMenuBar>
     );
   }
 
+  // ================= PRODUCTION ITEMS =================
+  List<DropdownItem> _productionItems() {
+    final items = <DropdownItem>[];
+
+    // Menu ID 133: QC Entry
+    if (assignedMenuIds.contains(133)) {
+      items.add(
+        DropdownItem(
+          label: "QC Entry",
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const QCEntryPage()),
+          ),
+        ),
+      );
+    }
+
+    // Menu ID 11: Production Entry ✅ NEW
+    if (assignedMenuIds.contains(11)) {
+      items.add(
+        DropdownItem(
+          label: "Production Entry",
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ProductionEntryPage()),
+          ),
+        ),
+      );
+    }
+
+    return items;
+  }
+
   // ================= WORK STUDY ITEMS =================
   List<DropdownItem> _workStudyItems() {
     final items = <DropdownItem>[];
+    
+    // Menu ID 40: Downtime Entry without GMT Loss Qty
     if (assignedMenuIds.contains(40)) {
       items.add(
         DropdownItem(
@@ -244,12 +293,28 @@ class _TopMenuBarState extends State<TopMenuBar>
         ),
       );
     }
+    
+    // Menu ID 165: CTL Downtime Entry with GMT Loss Qty
+    if (assignedMenuIds.contains(165)) {
+      items.add(
+        DropdownItem(
+          label: "CTL Downtime Entry",
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const CtlNptEntryPage()),
+          ),
+        ),
+      );
+    }
+    
     return items;
   }
 
   // ================= COMMON ITEMS =================
   List<DropdownItem> _commonItems() {
     final items = <DropdownItem>[];
+    
+    // ✅ KANBAN (SOS) (IDM_ID = 231)
     if (assignedMenuIds.contains(231)) {
       items.add(
         DropdownItem(
@@ -261,6 +326,20 @@ class _TopMenuBarState extends State<TopMenuBar>
         ),
       );
     }
+
+    // ✅ KANBAN BOARD (IDM_ID = 232)
+    if (assignedMenuIds.contains(232)) {
+      items.add(
+        DropdownItem(
+          label: "Kanban Board",
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const KanbanBoardPage()),
+          ),
+        ),
+      );
+    }
+
     return items;
   }
 
@@ -300,77 +379,83 @@ class _TopMenuBarState extends State<TopMenuBar>
         child: Stack(
           children: [
             // LEFT LOGO
-            // LEFT LOGO
-Align(
-  alignment: Alignment.centerLeft,
-  child: GestureDetector(
-    onTap: () {
-      // Navigate to home page
-      Navigator.pushReplacementNamed(context, '/home'); 
-      // or Navigator.push(context, MaterialPageRoute(builder: (_) => HomePage()));
-    },
-    child: ShaderMask(
-      shaderCallback: (rect) => const LinearGradient(
-              colors: [Color(0xFF60A5FA), Color(0xFF38BDF8)])
-          .createShader(rect),
-      child: const Text("TrackAll",
-          style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 1.1,
-              color: Colors.white)),
-    ),
-  ),
-),
-
+            Align(
+              alignment: Alignment.centerLeft,
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.pushReplacementNamed(context, '/home'); 
+                },
+                child: ShaderMask(
+                  shaderCallback: (rect) => const LinearGradient(
+                          colors: [Color(0xFF60A5FA), Color(0xFF38BDF8)])
+                      .createShader(rect),
+                  child: const Text("TrackAll",
+                      style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.1,
+                          color: Colors.white)),
+                ),
+              ),
+            ),
 
             // CENTER COMPANY MODERN
             if (companyLabel != null)
               Align(
                 alignment: Alignment.center,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(22),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                    child: Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Colors.white.withOpacity(0.05),
-                            Colors.white.withOpacity(0.10),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(color: Colors.white.withOpacity(0.18)),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.25),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Text(
-                        companyLabel!,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14.5,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.8,
-                          shadows: [
-                            Shadow(
-                              color: Colors.black26,
-                              offset: Offset(0, 1),
-                              blurRadius: 2,
-                            ),
-                          ],
-                        ),
-                      ),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.white.withOpacity(0.08),
+                        Colors.white.withOpacity(0.15),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white.withOpacity(0.2)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.25),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.apartment_rounded,
+                        size: 16,
+                        color: Color(0xFF60A5FA),
+                      ),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          physics: const BouncingScrollPhysics(),
+                          child: Text(
+                            companyLabel!,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.5,
+                              shadows: [
+                                Shadow(
+                                  color: Colors.black26,
+                                  offset: Offset(0, 1),
+                                  blurRadius: 1.5,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -387,6 +472,7 @@ Align(
                   : Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        _desktopMenuButton("Production", _productionItems()),
                         _desktopMenuButton("Work Study", _workStudyItems()),
                         _desktopMenuButton("Common", _commonItems()),
                         if (isAdmin) _desktopMenuButton("Admin", _adminItems()),
@@ -401,8 +487,8 @@ Align(
                                           builder: (_) =>
                                               const CompanySelectPage()))),
                             ]),
-                        _desktopMenuButton("Logout",
-                            [DropdownItem(label: "Logout", onTap: _logout)]),
+                        _desktopMenuButton(
+                            "Logout", [DropdownItem(label: "Logout", onTap: _logout)]),
                       ],
                     ),
             ),
