@@ -1,5 +1,5 @@
 name: trackall_app
-description: A clean TrackAll Flutter app
+description: "TrackAll - Comprehensive tracking and management application for inventory, assets, and data entry."
 publish_to: 'none'
 version: 1.0.0+1
 

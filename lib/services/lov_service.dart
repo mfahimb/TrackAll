@@ -607,6 +607,93 @@ Future<List<Map<String, String>>> fetchQcLov({
 
   String _fmt(DateTime dt) => DateFormat('dd-MM-yyyy HH:mm').format(dt);
 
+// ================= SAVE PRODUCTION ENTRY =================
+// ================= SAVE PRODUCTION ENTRY =================
+Future<bool> saveProductionEntry({
+  required String lineId,
+  required String processId,
+  required String biiId,
+  required String bpoId,
+  required String size,
+  required String rejectQty,
+  required String prodQty,
+  required String bundleCount,
+  required String flag,
+  required String appUser,
+}) async {
+  try {
+    final company = await _getSelectedCompany();
+    if (company == null || company.isEmpty) {
+      debugPrint("❌ PRODUCTION SAVE BLOCKED: No company selected");
+      return false;
+    }
+
+    // ✅ MINIMAL params — exactly matching working Postman request
+// ✅ STEP 1: Test with EXACT Postman params only
+final queryParams = {
+  "P_ACTION"        : "I",
+  "P_PD_BII_ID"     : biiId,
+  "P_PD_PROCESS_ID" : processId,
+  "P_PD_SIZE"       : size,
+  "P_PD_PROD_QTY"   : prodQty,
+  "P_PD_BPO_ID"     : bpoId,
+  "P_LOGIN_COMPANY" : company,
+  "P_USER"          : appUser,
+  "P_PD_REJECT_QTY" : rejectQty,
+  "P_PD_BUNDDLE_COUNT": bundleCount,
+  "P_PD_FLAG"         : flag,
+};
+
+debugPrint("🔍 SAVE PARAMS:");
+queryParams.forEach((k, v) => debugPrint("   $k = $v"));
+
+    final uri = Uri.parse(
+      "https://ego.rflgroupbd.com:8077/ords/rpro/xxtrac_al/Production_API?" +
+          queryParams.entries
+              .map((e) => "${e.key}=${Uri.encodeComponent(e.value)}")
+              .join("&"),
+    );
+
+    debugPrint("📡 PRODUCTION SAVE URL => $uri");
+
+    final request = http.Request('POST', uri);
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    debugPrint("📡 STATUS: ${response.statusCode}");
+    debugPrint("📡 BODY:   ${response.body}");
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final body = response.body.trim();
+
+      if (body.isEmpty) {
+        debugPrint("❌ Empty response body — backend did not save");
+        return false;
+      }
+
+      try {
+        final decoded = jsonDecode(body);
+        final status = decoded["status"]?.toString().toUpperCase() ?? "";
+        if (status == "SUCCESS" || decoded["PD_ID"] != null) {
+          debugPrint("✅ PRODUCTION ENTRY SAVED — PD_ID: ${decoded['PD_ID']}");
+          return true;
+        }
+        debugPrint("❌ SERVER REJECTED: $decoded");
+        return false;
+      } catch (_) {
+        debugPrint("✅ PRODUCTION SAVED (plain): $body");
+        return true;
+      }
+    }
+
+    debugPrint("❌ HTTP ERROR: ${response.statusCode}");
+    return false;
+
+  } catch (e, st) {
+    debugPrint("❌ PRODUCTION SAVE EXCEPTION: $e\n$st");
+    return false;
+  }
+}
   // ================= SAVE SOS LINE =================
   Future<bool> saveSosLine({
     required String action,

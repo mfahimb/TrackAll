@@ -574,45 +574,61 @@ class _QCEntryPageState extends State<QCEntryPage> {
                       spacing: 12,
                       runSpacing: 12,
                       children: [
-                        _itemTableDropdown(context, "Item / Color *", itemLabel, itemList, itemDisplayCount,
-                            (id, label) async {
-                          setState(() {
-                            itemId = id;
-                            itemLabel = label;
+                       // ================= ITEM (FULL WIDTH) =================
+_itemTableDropdown(
+  context,
+  "Item / Color *",
+  itemLabel,
+  itemList,
+  itemDisplayCount,
+  (id, label) async {
+    setState(() {
+      itemId = id;
+      itemLabel = label;
 
-                            selectedItemMap = itemList.firstWhere(
-                              (item) => item['id'] == id,
-                              orElse: () => {},
-                            );
+      selectedItemMap = itemList.firstWhere(
+        (item) => item['id'] == id,
+        orElse: () => {},
+      );
 
-                            orderNo = selectedItemMap?["BPO_PO_NO"] ?? "";
-                            articleNo = selectedItemMap?["STYLE_NO"] ?? "";
+      orderNo = selectedItemMap?["BPO_PO_NO"] ?? "";
+      articleNo = selectedItemMap?["STYLE_NO"] ?? "";
 
-                            processList.clear();
-                            processId = null;
-                            processLabel = null;
+      processList.clear();
+      processId = null;
+      processLabel = null;
 
-                            lineList.clear();
-                            lineId = null;
-                            lineLabel = null;
+      lineList.clear();
+      lineId = null;
+      lineLabel = null;
 
-                            sizeList.clear();
-                            size = null;
-                            sizeId = null;
+      sizeList.clear();
+      size = null;
+      sizeId = null;
 
-                            issueTypeList.clear();
-                            issueType = null;
-                            issueTypeId = null;
-                          });
+      issueTypeList.clear();
+      issueType = null;
+      issueTypeId = null;
+    });
 
-                          await _loadJobNo();
-                          _loadProcess();
-                          _loadSizes();
-                        }, width),
+    await _loadJobNo();
+    _loadProcess();
+    _loadSizes();
+  },
+  double.infinity,
+),
 
-                        _readOnly("Job No", jobNo, width),
-                        _readOnly("Order No", orderNo, width),
-                        _readOnly("Article No", articleNo, width),
+// ================= JOB + ORDER SIDE BY SIDE =================
+Row(
+  children: [
+    Expanded(child: _readOnly("Job No", jobNo, double.infinity)),
+    const SizedBox(width: 12),
+    Expanded(child: _readOnly("Order No", orderNo, double.infinity)),
+  ],
+),
+
+// ================= ARTICLE FULL WIDTH =================
+_readOnly("Article No", articleNo, double.infinity),
 
                         _modernDropdown(context, "Process *", processLabel, processList, processDisplayCount,
                             (id, label) {
@@ -845,36 +861,54 @@ class _QCEntryPageState extends State<QCEntryPage> {
           const SizedBox(height: 4),
 
           Container(
-            height: 36,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey.shade300),
-            ),
-            child: TextField(
-              controller: quantityController,
-              keyboardType: TextInputType.number,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-              ],
-              decoration: const InputDecoration(
-                border: InputBorder.none,
-                isDense: true,
-                contentPadding: EdgeInsets.zero,
-                hintText: "0",
-                hintStyle: TextStyle(color: Colors.grey),
-              ),
-              onChanged: (v) {
-                setState(() {
-                  quantityValue = int.tryParse(v) ?? 0;
-                  quantity = v.isEmpty ? null : v;
-                });
-              },
-            ),
-          ),
+  height: 40, // keep or adjust slightly
+  padding: const EdgeInsets.symmetric(horizontal: 10),
+  decoration: BoxDecoration(
+    color: const Color(0xFFF7FAFF),
+    borderRadius: BorderRadius.circular(10),
+    border: Border.all(
+      color: const Color(0xFF1A73E8).withOpacity(0.25),
+      width: 1.2,
+    ),
+    boxShadow: const [
+      BoxShadow(
+        color: Color(0x14000000),
+        blurRadius: 4,
+        offset: Offset(0, 2),
+      )
+    ],
+  ),
+  child: Center(
+    child: TextField(
+      controller: quantityController,
+      keyboardType: TextInputType.number,
+      textAlign: TextAlign.center,
+      style: const TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w700,
+        color: Color(0xFF1A1A1A),
+        letterSpacing: 0.5,
+      ),
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      decoration: InputDecoration(
+        border: InputBorder.none,
+        isDense: true,
+        contentPadding: EdgeInsets.zero, // remove extra padding
+        hintText: "0",
+        hintStyle: TextStyle(
+          color: Colors.grey.shade400,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      onChanged: (v) {
+        setState(() {
+          quantityValue = int.tryParse(v) ?? 0;
+          quantity = v.isEmpty ? null : v;
+        });
+      },
+    ),
+  ),
+),
 
           const SizedBox(height: 4),
 
