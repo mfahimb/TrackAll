@@ -4,9 +4,19 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Load keystore properties
+import java.util.Properties
+import java.io.FileInputStream
+
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
+
 android {
-    namespace = "com.example.trackall_app"
-    compileSdk = flutter.compileSdkVersion
+    namespace = "com.pranrflmis.trackall"
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -15,38 +25,41 @@ android {
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
+        jvmTarget = "17"
     }
 
     defaultConfig {
-        applicationId = "com.example.trackall_app"
-        minSdk = flutter.minSdkVersion  // Updated for camera support
-        targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
+        applicationId = "com.pranrflmis.trackall"
+        minSdk = flutter.minSdkVersion
+        targetSdk = 36
+        versionCode = 2
+        versionName = "1.0.1"
+    }
+
+    signingConfigs {
+        create("release") {
+            keyAlias = keystoreProperties["keyAlias"] as String
+            keyPassword = keystoreProperties["keyPassword"] as String
+            storeFile = keystoreProperties["storeFile"]?.let { file(it) }
+            storePassword = keystoreProperties["storePassword"] as String
+        }
     }
 
     buildTypes {
         release {
-            // Signing config (you can replace with your own key later)
-            signingConfig = signingConfigs.getByName("debug")
-
-            // Disable code shrinking & resource shrinking to fix your previous error
-            isMinifyEnabled = false
-            isShrinkResources = false
-
-            // ProGuard file (optional, safe to keep)
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
         }
         debug {
-            // Debug settings remain default
+            // Debug defaults
         }
     }
 
-    // Optional: Enable view binding if needed
     buildFeatures {
         viewBinding = true
     }
@@ -54,4 +67,8 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // Add dependencies here if needed
 }
