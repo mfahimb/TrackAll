@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
@@ -10,7 +11,25 @@ import '../sos_page.dart';
 import '../qc_entry_page.dart';
 import '../production_entry_page.dart';
 import '../kanban_board_page.dart';
+import '../user_log.dart';
 
+// ─────────────────────────────────────────────
+// DESIGN TOKENS
+// ─────────────────────────────────────────────
+const _navy       = Color(0xFF060D1F);
+const _navyLight  = Color(0xFF0D1B35);
+const _accent     = Color(0xFF3B82F6);
+const _accentGlow = Color(0xFF60A5FA);
+const _cyan       = Color(0xFF06B6D4);
+const _surface    = Color(0xFF111827);
+const _border     = Color(0xFF1E3A5F);
+const _textPri    = Colors.white;
+const _textSec    = Color(0xFF94A3B8);
+const _danger     = Color(0xFFEF4444);
+
+// ─────────────────────────────────────────────
+// TOP MENU BAR
+// ─────────────────────────────────────────────
 class TopMenuBar extends StatefulWidget {
   const TopMenuBar({super.key});
 
@@ -18,96 +37,80 @@ class TopMenuBar extends StatefulWidget {
   State<TopMenuBar> createState() => _TopMenuBarState();
 }
 
-class _TopMenuBarState extends State<TopMenuBar> {
+class _TopMenuBarState extends State<TopMenuBar>
+    with SingleTickerProviderStateMixin {
   String? userId;
   String? companyLabel;
   List<int> assignedMenuIds = [];
+  late AnimationController _pulse;
 
-  /// ✅ SAFE ADMIN CHECK
   bool get isAdmin => userId?.trim() == "540150";
 
   @override
   void initState() {
     super.initState();
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    )..repeat(reverse: true);
     _loadUserData();
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
   }
 
   Future<void> _loadUserData() async {
     final prefs = await SharedPreferences.getInstance();
     userId = prefs.getString('userId');
     companyLabel = prefs.getString('selected_company_label');
-
-    if (userId != null) {
-      assignedMenuIds = await _fetchUserMenuIds(userId!);
-    }
-
-    setState(() {});
+    if (userId != null) assignedMenuIds = await _fetchUserMenuIds(userId!);
+    if (mounted) setState(() {});
   }
 
-  // ================= FETCH USER MENU =================
   Future<List<int>> _fetchUserMenuIds(String appUser) async {
     try {
       final uri = Uri.parse(
               "https://ego.rflgroupbd.com:8077/ords/rpro/xxtrac_al/get_lov")
-          .replace(queryParameters: {
-        'P_QRYTYP': 'MENU',
-        'P_APP_USER': appUser,
-      });
+          .replace(queryParameters: {'P_QRYTYP': 'MENU', 'P_APP_USER': appUser});
       final resp = await http.get(uri);
       if (resp.statusCode != 200) return [];
-
       final decoded = jsonDecode(resp.body);
       final List list = decoded['MENU'] ?? [];
       return list.map<int>((e) => e['IDM_ID'] as int).toList();
-    } catch (e) {
-      return [];
-    }
+    } catch (_) { return []; }
   }
 
-  // ================= SHOW MODERN SIDEBAR =================
   void _openSidebar() {
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
       barrierLabel: "Sidebar",
-      barrierColor: Colors.black.withOpacity(0.5),
-      transitionDuration: const Duration(milliseconds: 450),
-      pageBuilder: (context, anim1, anim2) {
-        return Align(
-          alignment: Alignment.centerLeft,
-          child: Material(
-            color: Colors.transparent,
-            child: _ModernSidebar(
-              animation: anim1,
-              userId: userId,
-              companyLabel: companyLabel,
-              isAdmin: isAdmin,
-              assignedMenuIds: assignedMenuIds,
-              onLogout: _logout,
-            ),
+      barrierColor: Colors.black.withOpacity(0.6),
+      transitionDuration: const Duration(milliseconds: 380),
+      pageBuilder: (context, anim1, anim2) => Align(
+        alignment: Alignment.centerLeft,
+        child: Material(
+          color: Colors.transparent,
+          child: _ModernSidebar(
+            animation: anim1,
+            userId: userId,
+            companyLabel: companyLabel,
+            isAdmin: isAdmin,
+            assignedMenuIds: assignedMenuIds,
+            onLogout: _logout,
           ),
-        );
-      },
-      transitionBuilder: (context, anim1, anim2, child) {
-        return SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(-1, 0),
-            end: Offset.zero,
-          ).animate(CurvedAnimation(
-            parent: anim1,
-            curve: Curves.easeInOutCubic,
-          )),
-          child: FadeTransition(
-            opacity: Tween<double>(begin: 0.0, end: 1.0).animate(
-              CurvedAnimation(
-                parent: anim1,
-                curve: Curves.easeOut,
-              ),
-            ),
-            child: child,
-          ),
-        );
-      },
+        ),
+      ),
+      transitionBuilder: (context, anim1, anim2, child) => SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(-1, 0),
+          end: Offset.zero,
+        ).animate(CurvedAnimation(parent: anim1, curve: Curves.easeOutCubic)),
+        child: child,
+      ),
     );
   }
 
@@ -117,227 +120,284 @@ class _TopMenuBarState extends State<TopMenuBar> {
     Navigator.pushReplacementNamed(context, '/login');
   }
 
-  // ================= BUILD TOP BAR =================
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = screenWidth < 600;
-    final isTablet = screenWidth >= 600 && screenWidth < 1024;
+    final isMobile = MediaQuery.of(context).size.width < 600;
+    final statusBarH = MediaQuery.of(context).padding.top;
+    final barContentH = isMobile ? 52.0 : 58.0;
 
-    // Bar height - compact
-    final barHeight = isMobile ? 48.0 : 54.0;
-
-    return SafeArea(
-      child: Container(
-        height: barHeight,
-        padding: EdgeInsets.symmetric(
-          horizontal: isMobile ? 8 : 12,
-          vertical: isMobile ? 4 : 6,
-        ),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              const Color(0xFF0F172A).withOpacity(0.95),
-              const Color(0xFF1E293B).withOpacity(0.85),
+    return AnimatedBuilder(
+      animation: _pulse,
+      builder: (context, child) {
+        return Container(
+          height: statusBarH + barContentH,
+          decoration: BoxDecoration(
+            color: _navy,
+            border: Border(
+              bottom: BorderSide(
+                color: _accent.withOpacity(0.15 + _pulse.value * 0.08),
+                width: 1,
+              ),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: _accent.withOpacity(0.08 + _pulse.value * 0.04),
+                blurRadius: 20,
+                offset: const Offset(0, 4),
+              ),
             ],
           ),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF60A5FA).withOpacity(0.15),
-              blurRadius: 24,
-              offset: const Offset(0, 8),
+          child: child,
+        );
+      },
+      child: Stack(
+        children: [
+          Positioned.fill(child: CustomPaint(painter: _GridPainter())),
+          // Push content below status bar, then center in remaining height
+          Positioned(
+            top: statusBarH,
+            left: 0, right: 0, bottom: 0,
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: isMobile ? 8 : 14),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  _MenuButton(onTap: _openSidebar, isMobile: isMobile),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.pushReplacementNamed(context, '/home'),
+                      child: const _LogoBadge(),
+                    ),
+                  ),
+                  if (companyLabel != null)
+                    _CompanyChip(label: companyLabel!, isMobile: isMobile),
+                ],
+              ),
             ),
-            BoxShadow(
-              color: Colors.black.withOpacity(0.25),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-          border: Border(
-            bottom: BorderSide(
-              color: const Color(0xFF60A5FA).withOpacity(0.2),
-              width: 0.8,
-            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
+// HAMBURGER BUTTON
+// ─────────────────────────────────────────────
+class _MenuButton extends StatefulWidget {
+  final VoidCallback onTap;
+  final bool isMobile;
+  const _MenuButton({required this.onTap, required this.isMobile});
+
+  @override
+  State<_MenuButton> createState() => _MenuButtonState();
+}
+
+class _MenuButtonState extends State<_MenuButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  bool _pressed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 150));
+  }
+
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    final size = widget.isMobile ? 36.0 : 40.0;
+    return GestureDetector(
+      onTapDown: (_) { setState(() => _pressed = true); _ctrl.forward(); },
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        _ctrl.reverse();
+        widget.onTap();
+      },
+      onTapCancel: () { setState(() => _pressed = false); _ctrl.reverse(); },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        width: size, height: size,
+        decoration: BoxDecoration(
+          color: _pressed
+              ? _accent.withOpacity(0.2)
+              : _accentGlow.withOpacity(0.06),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: _pressed ? _accent.withOpacity(0.5) : _border,
+            width: 1,
           ),
         ),
-        child: ClipRRect(
-          borderRadius: const BorderRadius.only(
-            bottomLeft: Radius.circular(16),
-            bottomRight: Radius.circular(16),
-          ),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // LEFT: MENU BUTTON
-                Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF60A5FA).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: const Color(0xFF60A5FA).withOpacity(0.2),
-                      width: 0.8,
-                    ),
-                  ),
-                  child: IconButton(
-                    icon: Icon(
-                      Icons.menu_rounded,
-                      color: const Color(0xFF60A5FA),
-                      size: isMobile ? 18 : 20,
-                    ),
-                    onPressed: _openSidebar,
-                    splashRadius: 14,
-                    padding: EdgeInsets.all(isMobile ? 4 : 5),
-                    constraints: BoxConstraints(
-                      minWidth: isMobile ? 30 : 34,
-                      minHeight: isMobile ? 30 : 34,
-                    ),
-                  ),
-                ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _bar(1.0),
+            const SizedBox(height: 4),
+            _bar(0.7),
+            const SizedBox(height: 4),
+            _bar(0.85),
+          ],
+        ),
+      ),
+    );
+  }
 
-                // CENTER: LOGO
-                Expanded(
-                  child: Center(
-                    child: GestureDetector(
-                      onTap: () {
-                        Navigator.pushReplacementNamed(context, '/home');
-                      },
-                      child: Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: isMobile ? 14 : 18,
-                          vertical: isMobile ? 6 : 8,
-                        ),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              const Color(0xFF60A5FA).withOpacity(0.08),
-                              const Color(0xFF38BDF8).withOpacity(0.05),
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: const Color(0xFF60A5FA).withOpacity(0.25),
-                            width: 0.8,
-                          ),
-                        ),
-                        child: ShaderMask(
-                          shaderCallback: (rect) => const LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              Color(0xFF60A5FA),
-                              Color(0xFF38BDF8),
-                            ],
-                          ).createShader(rect),
-                          child: Text(
-                            "TrackAll",
-                            style: TextStyle(
-                          fontSize: isMobile ? 16 : isTablet ? 18 : 20,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0.3,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+  Widget _bar(double widthFactor) => Container(
+    width: 16 * widthFactor,
+    height: 1.5,
+    decoration: BoxDecoration(
+      color: _accentGlow,
+      borderRadius: BorderRadius.circular(2),
+    ),
+  );
+}
 
-                if (companyLabel != null)
-                  ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxWidth: isMobile
-                          ? screenWidth * 0.36
-                          : isTablet
-                              ? screenWidth * 0.28
-                              : 220,
-                    ),
-                    child: Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: isMobile ? 10 : 12,
-                      vertical: isMobile ? 6 : 8,
-                    ),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Colors.white.withOpacity(0.15),
-                          Colors.white.withOpacity(0.05),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: const Color(0xFF38BDF8).withOpacity(0.3),
-                        width: 0.8,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Container(
-                          padding: EdgeInsets.all(isMobile ? 3 : 4),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                Color(0xFF60A5FA),
-                                Color(0xFF38BDF8),
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(5),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF60A5FA).withOpacity(0.2),
-                                blurRadius: 4,
-                                offset: const Offset(0, 1),
-                              ),
-                            ],
-                          ),
-                          child: Icon(
-                            Icons.apartment_rounded,
-                            size: isMobile ? 10 : 12,
-                            color: Colors.white,
-                          ),
-                        ),
-                        SizedBox(width: isMobile ? 6 : 8),
-                        Flexible(
-                          child: Text(
-                            companyLabel!,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: isMobile ? 9 : isTablet ? 10 : 11,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0,
-                              height: 1.3,
-                            ),
-                            softWrap: true,
-                            overflow: TextOverflow.visible,
-                            maxLines: 3,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  ),
-              ],
+// ─────────────────────────────────────────────
+// LOGO BADGE
+// ─────────────────────────────────────────────
+class _LogoBadge extends StatelessWidget {
+  const _LogoBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        // Icon mark
+        Container(
+          width: 28, height: 28,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [_accent, _cyan],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
+            borderRadius: BorderRadius.circular(7),
+            boxShadow: [
+              BoxShadow(
+                color: _accent.withOpacity(0.35),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
+          child: const Icon(Icons.track_changes_rounded,
+              color: Colors.white, size: 16),
+        ),
+        const SizedBox(width: 8),
+        RichText(
+          text: const TextSpan(
+            children: [
+              TextSpan(
+                text: "Track",
+                style: TextStyle(
+                  color: _textPri,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              TextSpan(
+                text: "All",
+                style: TextStyle(
+                  color: _accentGlow,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.3,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
+// COMPANY CHIP
+// ─────────────────────────────────────────────
+class _CompanyChip extends StatelessWidget {
+  final String label;
+  final bool isMobile;
+  const _CompanyChip({required this.label, required this.isMobile});
+
+  @override
+  Widget build(BuildContext context) {
+    final maxW = isMobile
+        ? MediaQuery.of(context).size.width * 0.28
+        : 180.0;
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxW),
+      child: Container(
+        padding: EdgeInsets.symmetric(
+            horizontal: isMobile ? 7 : 10,
+            vertical: isMobile ? 5 : 6),
+        decoration: BoxDecoration(
+          color: _navyLight,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: _border, width: 1),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 6, height: 6,
+              decoration: const BoxDecoration(
+                color: Color(0xFF22C55E),
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 5),
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: _textSec,
+                  fontSize: isMobile ? 9 : 10,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.1,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-// ================= MODERN SIDEBAR COMPONENT =================
+// ─────────────────────────────────────────────
+// GRID BACKGROUND PAINTER
+// ─────────────────────────────────────────────
+class _GridPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = _accent.withOpacity(0.04)
+      ..strokeWidth = 0.5;
+    const step = 20.0;
+    for (double x = 0; x < size.width; x += step) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// ─────────────────────────────────────────────
+// MODERN SIDEBAR
+// ─────────────────────────────────────────────
 class _ModernSidebar extends StatefulWidget {
   final Animation<double> animation;
   final String? userId;
@@ -359,153 +419,165 @@ class _ModernSidebar extends StatefulWidget {
   State<_ModernSidebar> createState() => _ModernSidebarState();
 }
 
-class _ModernSidebarState extends State<_ModernSidebar> {
+class _ModernSidebarState extends State<_ModernSidebar>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _stagger;
+
+  @override
+  void initState() {
+    super.initState();
+    _stagger = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    )..forward();
+  }
+
+  @override
+  void dispose() { _stagger.dispose(); super.dispose(); }
+
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final sidebarWidth = screenWidth * 0.75 > 320 ? 320.0 : screenWidth * 0.75;
+    final screenW = MediaQuery.of(context).size.width;
+    final sidebarW = (screenW * 0.78).clamp(0.0, 300.0);
 
-    return SafeArea(
-      top: true,
-      bottom: false,
-      child: Container(
-        width: sidebarWidth,
-        height: MediaQuery.of(context).size.height,
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [
-              Color(0xFF0F172A),
-              Color(0xFF1E293B),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+    return Container(
+      width: sidebarW,
+      height: MediaQuery.of(context).size.height,
+      decoration: BoxDecoration(
+        color: _navy,
+        border: Border(
+          right: BorderSide(color: _border, width: 1),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.5),
+            blurRadius: 32,
+            offset: const Offset(8, 0),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 20,
-              offset: const Offset(4, 0),
+        ],
+      ),
+      child: SafeArea(
+        child: Column(
+          children: [
+            _buildHeader(),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
+                children: [
+                  _animatedItem(0, _buildSection("Production", Icons.precision_manufacturing_rounded, _getProductionItems())),
+                  _animatedItem(1, _buildSection("Work Study", Icons.analytics_rounded, _getWorkStudyItems())),
+                  _animatedItem(2, _buildSection("Common", Icons.dashboard_rounded, _getCommonItems())),
+                  _animatedItem(3, _buildNavItem(
+                    icon: Icons.person_pin_circle_rounded,
+                    label: "My Log",
+                    color: _cyan,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(context,
+                          MaterialPageRoute(builder: (_) => const UserLogPage()));
+                    },
+                  )),
+                  if (widget.isAdmin)
+                    _animatedItem(4, _buildSection("Admin", Icons.admin_panel_settings_rounded, _getAdminItems())),
+                  const SizedBox(height: 16),
+                  _animatedItem(5, Container(
+                    height: 1,
+                    color: _border,
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                  )),
+                  _animatedItem(6, _buildNavItem(
+                    icon: Icons.swap_horiz_rounded,
+                    label: "Change Company",
+                    color: _accentGlow,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(context,
+                          MaterialPageRoute(builder: (_) => const CompanySelectPage()));
+                    },
+                  )),
+                  _animatedItem(7, _buildNavItem(
+                    icon: Icons.logout_rounded,
+                    label: "Logout",
+                    color: _danger,
+                    onTap: () {
+                      Navigator.pop(context);
+                      widget.onLogout();
+                    },
+                  )),
+                ],
+              ),
             ),
           ],
-        ),
-        child: ClipRRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Column(
-              children: [
-                // HEADER
-                _buildHeader(),
-
-                const Divider(color: Colors.white12, height: 1),
-
-                // MENU ITEMS
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    children: [
-                      _buildMenuSection("Production", _getProductionItems()),
-                      _buildMenuSection("Work Study", _getWorkStudyItems()),
-                      _buildMenuSection("Common", _getCommonItems()),
-                      if (widget.isAdmin) _buildMenuSection("Admin", _getAdminItems()),
-
-                      const SizedBox(height: 24),
-                      const Divider(color: Colors.white12, height: 1),
-                      const SizedBox(height: 8),
-
-                      _buildSingleItem(
-                        Icons.swap_horiz_rounded,
-                        "Change Company",
-                        () {
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const CompanySelectPage(),
-                            ),
-                          );
-                        },
-                      ),
-
-                      _buildSingleItem(
-                        Icons.logout_rounded,
-                        "Logout",
-                        () {
-                          Navigator.pop(context);
-                          widget.onLogout();
-                        },
-                        isDestructive: true,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
         ),
       ),
     );
   }
 
-  // ================= HEADER =================
+  Widget _animatedItem(int index, Widget child) {
+    final delay = index * 0.08;
+    return AnimatedBuilder(
+      animation: _stagger,
+      builder: (context, _) {
+        final t = ((_stagger.value - delay) / (1.0 - delay)).clamp(0.0, 1.0);
+        final curve = Curves.easeOutCubic.transform(t);
+        return Transform.translate(
+          offset: Offset(-20 * (1 - curve), 0),
+          child: Opacity(opacity: curve, child: child),
+        );
+      },
+    );
+  }
+
   Widget _buildHeader() {
-     final isMobile = MediaQuery.of(context).size.width < 600;
     return Container(
-      padding: EdgeInsets.all(isMobile ? 14 : 20),
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            const Color(0xFF60A5FA).withOpacity(0.15),
-            const Color(0xFF38BDF8).withOpacity(0.1),
-          ],
-        ),
+        color: _navyLight,
+        border: Border(bottom: BorderSide(color: _border, width: 1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
+              // Avatar with gradient ring
               Container(
-                padding: EdgeInsets.all(isMobile ? 8 : 10),
+                width: 44, height: 44,
                 decoration: BoxDecoration(
+                  shape: BoxShape.circle,
                   gradient: const LinearGradient(
-                    colors: [Color(0xFF60A5FA), Color(0xFF38BDF8)],
+                    colors: [_accent, _cyan],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF60A5FA).withOpacity(0.3),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
+                        color: _accent.withOpacity(0.4),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4)),
                   ],
                 ),
-                child: Icon(
-                  Icons.person_rounded,
-                  color: Colors.white,
-                  size: isMobile ? 22 : 28,
-                ),
+                child: const Icon(Icons.person_rounded,
+                    color: Colors.white, size: 22),
               ),
-              SizedBox(width: isMobile ? 12 : 16),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      "Welcome",
-                      style: TextStyle(
-                        color: Colors.white60,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
+                    const Text("Signed in as",
+                        style: TextStyle(
+                            color: _textSec,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: 0.5)),
+                    const SizedBox(height: 3),
                     Text(
                       widget.userId ?? "User",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: isMobile ? 15 : 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: const TextStyle(
+                          color: _textPri,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700),
                     ),
                   ],
                 ),
@@ -513,30 +585,26 @@ class _ModernSidebarState extends State<_ModernSidebar> {
             ],
           ),
           if (widget.companyLabel != null) ...[
-            SizedBox(height: isMobile ? 10 : 16),
+            const SizedBox(height: 12),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.08),
+                color: _accent.withOpacity(0.06),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.white.withOpacity(0.1)),
+                border: Border.all(color: _accent.withOpacity(0.15), width: 1),
               ),
               child: Row(
                 children: [
-                  const Icon(
-                    Icons.apartment_rounded,
-                    size: 16,
-                    color: Color(0xFF60A5FA),
-                  ),
-                  const SizedBox(width: 8),
+                  const Icon(Icons.business_rounded,
+                      size: 13, color: _accentGlow),
+                  const SizedBox(width: 7),
                   Expanded(
                     child: Text(
                       widget.companyLabel!,
                       style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
+                          color: _accentGlow,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -549,411 +617,317 @@ class _ModernSidebarState extends State<_ModernSidebar> {
     );
   }
 
-  // ================= MENU SECTION =================
-  Widget _buildMenuSection(String title, List<_MenuItem> items) {
+  /// Collapsible section with nested items
+  Widget _buildSection(String title, IconData icon, List<_MenuItem> items) {
     if (items.isEmpty) return const SizedBox.shrink();
-
-    final GlobalKey sectionKey = GlobalKey();
-
-    return InkWell(
-      key: sectionKey,
-      onTap: () {
-        if (sectionKey.currentContext != null) {
-          final RenderBox box =
-              sectionKey.currentContext!.findRenderObject() as RenderBox;
-          final Offset globalPosition = box.localToGlobal(Offset.zero);
-          final double iconCenterY = globalPosition.dy + (box.size.height / 2);
-          _openNestedSidebar(title, items, iconCenterY);
-        }
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
-              color: Colors.white.withOpacity(0.05),
-              width: 1,
-            ),
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    const Color(0xFF60A5FA).withOpacity(0.2),
-                    const Color(0xFF38BDF8).withOpacity(0.1),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                _getSectionIcon(title),
-                size: 20,
-                color: const Color(0xFF60A5FA),
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            const Icon(
-              Icons.arrow_forward_ios_rounded,
-              size: 14,
-              color: Colors.white60,
-            ),
-          ],
-        ),
-      ),
-    );
+    return _ExpandableSection(title: title, icon: icon, items: items);
   }
 
-  // ================= OPEN NESTED SIDEBAR =================
-  void _openNestedSidebar(String title, List<_MenuItem> items, double iconCenterY) {
-    final screen = MediaQuery.of(context).size;
-
-    const double submenuWidth = 240.0;
-    const double submenuHeight = 260.0;
-
-    final sidebarWidth = screen.width * 0.75 > 320 ? 320.0 : screen.width * 0.75;
-
-    double top = iconCenterY - (submenuHeight / 2);
-    top = top.clamp(20.0, screen.height - submenuHeight - 20);
-
-    double left = sidebarWidth - (submenuWidth * 0.8);
-    left = left.clamp(0.0, screen.width - submenuWidth);
-
-    top = top + 60.0;
-
-    showGeneralDialog(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: "Submenu",
-      barrierColor: Colors.transparent,
-      transitionDuration: const Duration(milliseconds: 200),
-      pageBuilder: (context, anim1, anim2) {
-        return Stack(
-          children: [
-            Positioned(
-              left: left,
-              top: top,
-              child: Material(
-                color: Colors.transparent,
-                child: _NestedSidebar(
-                  animation: anim1,
-                  title: title,
-                  items: items,
-                  icon: _getSectionIcon(title),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-      transitionBuilder: (context, anim1, anim2, child) {
-        return FadeTransition(
-          opacity: anim1,
-          child: ScaleTransition(
-            scale: Tween<double>(begin: 0.9, end: 1.0).animate(anim1),
-            child: child,
-          ),
-        );
-      },
-    );
-  }
-
-  // ================= SINGLE MENU ITEM =================
-  Widget _buildSingleItem(
-    IconData icon,
-    String label,
-    VoidCallback onTap, {
-    bool isDestructive = false,
+  /// Simple nav item (no children)
+  Widget _buildNavItem({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
   }) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: isDestructive
-                    ? Colors.red.withOpacity(0.1)
-                    : Colors.white.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                icon,
-                size: 20,
-                color: isDestructive ? Colors.redAccent : const Color(0xFF60A5FA),
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  color: isDestructive ? Colors.redAccent : Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-            Icon(
-              Icons.arrow_forward_ios_rounded,
-              size: 14,
-              color: isDestructive ? Colors.red.withOpacity(0.3) : Colors.white30,
-            ),
-          ],
-        ),
-      ),
-    );
+    return _SidebarTile(icon: icon, label: label, color: color, onTap: onTap);
   }
 
-  // ================= SECTION ICONS =================
-  IconData _getSectionIcon(String section) {
-    switch (section) {
-      case "Production":
-        return Icons.precision_manufacturing_rounded;
-      case "Work Study":
-        return Icons.analytics_rounded;
-      case "Common":
-        return Icons.dashboard_rounded;
-      case "Admin":
-        return Icons.admin_panel_settings_rounded;
-      default:
-        return Icons.folder_rounded;
-    }
-  }
-
-  // ================= GET MENU ITEMS =================
   List<_MenuItem> _getProductionItems() {
     final items = <_MenuItem>[];
-
-    if (widget.assignedMenuIds.contains(133)) {
-      items.add(_MenuItem(
-        label: "QC Entry",
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const QCEntryPage()),
-        ),
-      ));
-    }
-
-    if (widget.assignedMenuIds.contains(11)) {
-      items.add(_MenuItem(
-        label: "Production Entry",
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const ProductionEntryPage()),
-        ),
-      ));
-    }
-
+    if (widget.assignedMenuIds.contains(133))
+      items.add(_MenuItem(label: "QC Entry",
+          icon: Icons.verified_rounded,
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const QCEntryPage()))));
+    if (widget.assignedMenuIds.contains(11))
+      items.add(_MenuItem(label: "Production Entry",
+          icon: Icons.add_chart_rounded,
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const ProductionEntryPage()))));
     return items;
   }
 
   List<_MenuItem> _getWorkStudyItems() {
     final items = <_MenuItem>[];
-
-    if (widget.assignedMenuIds.contains(40)) {
-      items.add(_MenuItem(
-        label: "Downtime Entry",
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const NptEntryPage()),
-        ),
-      ));
-    }
-
-    if (widget.assignedMenuIds.contains(165)) {
-      items.add(_MenuItem(
-        label: "CTL Downtime Entry",
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const CtlNptEntryPage()),
-        ),
-      ));
-    }
-
+    if (widget.assignedMenuIds.contains(40))
+      items.add(_MenuItem(label: "Downtime Entry",
+          icon: Icons.timer_off_rounded,
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const NptEntryPage()))));
+    if (widget.assignedMenuIds.contains(165))
+      items.add(_MenuItem(label: "CTL Downtime",
+          icon: Icons.hourglass_bottom_rounded,
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const CtlNptEntryPage()))));
     return items;
   }
 
   List<_MenuItem> _getCommonItems() {
     final items = <_MenuItem>[];
-
-    if (widget.assignedMenuIds.contains(231)) {
-      items.add(_MenuItem(
-        label: "Kanban",
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const SOSPage()),
-        ),
-      ));
-    }
-
-    if (widget.assignedMenuIds.contains(232)) {
-      items.add(_MenuItem(
-        label: "Kanban Board",
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const KanbanBoardPage()),
-        ),
-      ));
-    }
-
+    if (widget.assignedMenuIds.contains(231))
+      items.add(_MenuItem(label: "Kanban",
+          icon: Icons.view_kanban_rounded,
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const SOSPage()))));
+    if (widget.assignedMenuIds.contains(232))
+      items.add(_MenuItem(label: "Kanban Board",
+          icon: Icons.dashboard_customize_rounded,
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const KanbanBoardPage()))));
     return items;
   }
 
-  List<_MenuItem> _getAdminItems() {
-    return [
-      _MenuItem(
-        label: "Admin Panel",
-        onTap: () => Navigator.pushNamed(context, '/admin'),
-      ),
-    ];
-  }
+  List<_MenuItem> _getAdminItems() => [
+    _MenuItem(label: "Admin Panel",
+        icon: Icons.manage_accounts_rounded,
+        onTap: () => Navigator.pushNamed(context, '/admin')),
+  ];
 }
 
-// ================= NESTED SIDEBAR =================
-class _NestedSidebar extends StatelessWidget {
-  final Animation<double> animation;
+// ─────────────────────────────────────────────
+// EXPANDABLE SECTION
+// ─────────────────────────────────────────────
+class _ExpandableSection extends StatefulWidget {
   final String title;
-  final List<_MenuItem> items;
   final IconData icon;
+  final List<_MenuItem> items;
 
-  const _NestedSidebar({
-    required this.animation,
+  const _ExpandableSection({
     required this.title,
-    required this.items,
     required this.icon,
+    required this.items,
   });
 
   @override
+  State<_ExpandableSection> createState() => _ExpandableSectionState();
+}
+
+class _ExpandableSectionState extends State<_ExpandableSection>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _expand;
+  bool _open = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 220));
+    _expand = CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic);
+  }
+
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+
+  void _toggle() {
+    setState(() => _open = !_open);
+    _open ? _ctrl.forward() : _ctrl.reverse();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final screen = MediaQuery.of(context).size;
-
-    final width = screen.width < 400 ? screen.width * 0.55 : 240.0;
-
-    return Container(
-      width: width.clamp(180, 260),
-      constraints: BoxConstraints(
-        maxHeight: screen.height * 0.6,
-      ),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
-        borderRadius: const BorderRadius.only(
-          topRight: Radius.circular(20),
-          bottomRight: Radius.circular(20),
-          bottomLeft: Radius.circular(20),
-          topLeft: Radius.circular(4),
-        ),
-        border: Border.all(
-          color: const Color(0xFF60A5FA).withOpacity(0.5),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.6),
-            blurRadius: 30,
-            spreadRadius: -5,
-            offset: const Offset(10, 10),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF60A5FA).withOpacity(0.1),
-                border: Border(
-                  bottom: BorderSide(color: Colors.white.withOpacity(0.05)),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(icon, color: const Color(0xFF60A5FA), size: 18),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
+    return Column(
+      children: [
+        // ── Header row ──────────────────────────
+        GestureDetector(
+          onTap: _toggle,
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+            decoration: BoxDecoration(
+              color: _open ? _accent.withOpacity(0.07) : Colors.transparent,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: _open ? _accent.withOpacity(0.2) : Colors.transparent,
+                width: 1,
               ),
             ),
+            child: Row(
+              children: [
+                Container(
+                  width: 32, height: 32,
+                  decoration: BoxDecoration(
+                    color: _open
+                        ? _accent.withOpacity(0.15)
+                        : _navyLight,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: _open ? _accent.withOpacity(0.3) : _border,
+                      width: 1,
+                    ),
+                  ),
+                  child: Icon(widget.icon,
+                      size: 15,
+                      color: _open ? _accentGlow : _textSec),
+                ),
+                const SizedBox(width: 11),
+                Expanded(
+                  child: Text(widget.title,
+                      style: TextStyle(
+                          color: _open ? _textPri : _textSec,
+                          fontSize: 14,
+                          fontWeight:
+                              _open ? FontWeight.w600 : FontWeight.w500)),
+                ),
+                AnimatedBuilder(
+                  animation: _expand,
+                  builder: (_, __) => Transform.rotate(
+                    angle: _expand.value * math.pi / 2,
+                    child: Icon(Icons.chevron_right_rounded,
+                        size: 16,
+                        color: _open ? _accentGlow : _textSec),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
 
-            Flexible(
-              child: ListView.separated(
-                shrinkWrap: true,
-                padding: const EdgeInsets.all(8),
-                itemCount: items.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 4),
-                itemBuilder: (context, i) => _buildSubItem(context, items[i]),
+        // ── Expanded children ───────────────────
+        SizeTransition(
+          sizeFactor: _expand,
+          child: Container(
+            margin: const EdgeInsets.only(left: 16, bottom: 4),
+            padding: const EdgeInsets.only(left: 10),
+            decoration: BoxDecoration(
+              border: Border(
+                left: BorderSide(color: _accent.withOpacity(0.25), width: 1.5),
               ),
+            ),
+            child: Column(
+              children: widget.items.map((item) => _SubItem(item: item)).toList(),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
+// SUB ITEM (inside expanded section)
+// ─────────────────────────────────────────────
+class _SubItem extends StatefulWidget {
+  final _MenuItem item;
+  const _SubItem({required this.item});
+
+  @override
+  State<_SubItem> createState() => _SubItemState();
+}
+
+class _SubItemState extends State<_SubItem> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _hovered = true),
+      onTapUp: (_) {
+        setState(() => _hovered = false);
+        Navigator.pop(context);
+        widget.item.onTap();
+      },
+      onTapCancel: () => setState(() => _hovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        margin: const EdgeInsets.only(bottom: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        decoration: BoxDecoration(
+          color: _hovered ? _accent.withOpacity(0.1) : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            if (widget.item.icon != null)
+              Icon(widget.item.icon!, size: 14, color: _cyan)
+            else
+              Container(
+                width: 5, height: 5,
+                decoration: const BoxDecoration(
+                    color: _cyan, shape: BoxShape.circle),
+              ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(widget.item.label,
+                  style: const TextStyle(
+                      color: _textSec,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500)),
             ),
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _buildSubItem(BuildContext context, _MenuItem item) {
-    return InkWell(
-      onTap: () {
-        Navigator.pop(context);
-        Navigator.pop(context);
-        item.onTap();
-      },
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+// ─────────────────────────────────────────────
+// SIDEBAR TILE (standalone nav item)
+// ─────────────────────────────────────────────
+class _SidebarTile extends StatefulWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _SidebarTile({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  State<_SidebarTile> createState() => _SidebarTileState();
+}
+
+class _SidebarTileState extends State<_SidebarTile> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) { setState(() => _pressed = false); widget.onTap(); },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        margin: const EdgeInsets.only(bottom: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          color: Colors.white.withOpacity(0.02),
+          color: _pressed ? widget.color.withOpacity(0.1) : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: _pressed ? widget.color.withOpacity(0.2) : Colors.transparent,
+            width: 1,
+          ),
         ),
         child: Row(
           children: [
             Container(
-              width: 6,
-              height: 6,
-              decoration: const BoxDecoration(
-                color: Color(0xFF38BDF8),
-                shape: BoxShape.circle,
+              width: 32, height: 32,
+              decoration: BoxDecoration(
+                color: widget.color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                    color: widget.color.withOpacity(0.2), width: 1),
               ),
+              child: Icon(widget.icon, size: 15, color: widget.color),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 11),
             Expanded(
-              child: Text(
-                item.label,
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
+              child: Text(widget.label,
+                  style: TextStyle(
+                      color: _pressed ? widget.color : _textSec,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500)),
             ),
-            const Icon(Icons.chevron_right_rounded,
-                color: Colors.white10, size: 16),
+            Icon(Icons.arrow_forward_ios_rounded,
+                size: 11,
+                color: _pressed
+                    ? widget.color.withOpacity(0.5)
+                    : Colors.white12),
           ],
         ),
       ),
@@ -961,10 +935,13 @@ class _NestedSidebar extends StatelessWidget {
   }
 }
 
-// ================= MENU ITEM MODEL =================
+// ─────────────────────────────────────────────
+// DATA MODEL
+// ─────────────────────────────────────────────
 class _MenuItem {
   final String label;
   final VoidCallback onTap;
+  final IconData? icon;
 
-  _MenuItem({required this.label, required this.onTap});
+  _MenuItem({required this.label, required this.onTap, this.icon});
 }

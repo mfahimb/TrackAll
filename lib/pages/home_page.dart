@@ -204,6 +204,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     return Scaffold(
       body: Stack(
         children: [
+          // ── Background gradient ──────────────────────────────────
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
@@ -217,6 +218,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               ),
             ),
           ),
+          // ── Decorative circles ───────────────────────────────────
           Positioned(
             top: -100,
             right: -100,
@@ -251,52 +253,48 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               ),
             ),
           ),
+          // ── Main content ─────────────────────────────────────────
           Column(
             children: [
               const TopMenuBar(),
               Expanded(
                 child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      // ✅ SMALLER vertical padding
-                      horizontal: isMobile ? 16 : 32,
-                      vertical: isMobile ? 16 : 28,
-                    ),
-                    child: Column(
-                      children: [
-                        FadeTransition(
-                          opacity: _fadeAnimation,
-                          child: SlideTransition(
-                            position: _slideAnimation,
-                            child: _buildWelcomeCard(isMobile),
+                  physics: const ClampingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Welcome card
+                      FadeTransition(
+                        opacity: _fadeAnimation,
+                        child: SlideTransition(
+                          position: _slideAnimation,
+                          child: _buildWelcomeCard(isMobile),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      // Activity Log
+                      FadeTransition(
+                        opacity: _fadeAnimation,
+                        child: SlideTransition(
+                          position: _slideAnimation,
+                          child: ActivityLogSection(
+                            assignedMenuIds: assignedMenuIds,
                           ),
                         ),
-                        // ✅ SMALLER gap
-                        SizedBox(height: isMobile ? 20 : 32),
-                        // ── Activity Log ──────────────────────────
-                        FadeTransition(
-                          opacity: _fadeAnimation,
-                          child: SlideTransition(
-                            position: _slideAnimation,
-                            child: ActivityLogSection(
-                              assignedMenuIds: assignedMenuIds,
-                            ),
-                          ),
+                      ),
+                      const SizedBox(height: 14),
+                      // Quick Actions
+                      FadeTransition(
+                        opacity: _fadeAnimation,
+                        child: SlideTransition(
+                          position: _slideAnimation,
+                          child: _buildQuickActions(isMobile, accessibleActions),
                         ),
-
-                        SizedBox(height: isMobile ? 20 : 28),
-
-                        FadeTransition(
-                          opacity: _fadeAnimation,
-                          child: SlideTransition(
-                            position: _slideAnimation,
-                            child: _buildQuickActions(isMobile, accessibleActions),
-                          ),
-                        ),
-                        SizedBox(height: isMobile ? 20 : 32),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
                   ),
                 ),
               ),
@@ -310,8 +308,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   Widget _buildWelcomeCard(bool isMobile) {
     return Container(
       width: double.infinity,
-      // ✅ SMALLER padding
-      padding: EdgeInsets.all(isMobile ? 16 : 24),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -338,85 +335,68 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         borderRadius: BorderRadius.circular(20),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             children: [
-              Row(
-                children: [
-                  Container(
-                    // ✅ SMALLER icon container
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF60A5FA), Color(0xFF38BDF8)],
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF60A5FA).withOpacity(0.3),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.dashboard_rounded,
-                      color: Colors.white,
-                      size: 22,  // ✅ smaller icon
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Welcome Back!",
-                          style: TextStyle(
-                            fontSize: isMobile ? 12 : 14,
-                            color: isDarkMode
-                                ? Colors.white.withOpacity(0.7)
-                                : const Color(0xFF64748B),
-                            fontWeight: FontWeight.w500,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          "TrackAll Dashboard",
-                          style: TextStyle(
-                            // ✅ SMALLER heading
-                            fontSize: isMobile ? 18 : 24,
-                            fontWeight: FontWeight.w900,
-                            color: isDarkMode ? Colors.white : const Color(0xFF0F172A),
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: isMobile ? 14 : 18),
               Container(
-                height: 1,
-                color: isDarkMode
-                    ? Colors.white.withOpacity(0.1)
-                    : Colors.black.withOpacity(0.1),
-              ),
-              SizedBox(height: isMobile ? 14 : 18),
-              Padding(
-                padding: EdgeInsets.only(left: isMobile ? 16 : 24),
-                child: Text(
-                  "Manage your production workflow efficiently",
-                  style: TextStyle(
-                    fontSize: isMobile ? 12 : 14,
-                    color: isDarkMode
-                        ? Colors.white.withOpacity(0.6)
-                        : const Color(0xFF64748B),
-                    height: 1.5,
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF60A5FA), Color(0xFF38BDF8)],
                   ),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF60A5FA).withOpacity(0.3),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.dashboard_rounded,
+                  color: Colors.white,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Welcome Back!",
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isDarkMode
+                            ? Colors.white.withOpacity(0.7)
+                            : const Color(0xFF64748B),
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    Text(
+                      "TrackAll Dashboard",
+                      style: TextStyle(
+                        fontSize: isMobile ? 15 : 20,
+                        fontWeight: FontWeight.w900,
+                        color: isDarkMode
+                            ? Colors.white
+                            : const Color(0xFF0F172A),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      "Manage your production workflow efficiently",
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: isDarkMode
+                            ? Colors.white.withOpacity(0.6)
+                            : const Color(0xFF64748B),
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -430,23 +410,39 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          "Quick Actions",
-          style: TextStyle(
-            fontSize: isMobile ? 16 : 20,
-            fontWeight: FontWeight.w800,
-            color: isDarkMode ? Colors.white : const Color(0xFF0F172A),
-            letterSpacing: 0.5,
-          ),
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                    colors: [Color(0xFF8B5CF6), Color(0xFF6366F1)]),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.grid_view_rounded,
+                  color: Colors.white, size: 16),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              "Quick Actions",
+              style: TextStyle(
+                fontSize: isMobile ? 16 : 20,
+                fontWeight: FontWeight.w800,
+                color: isDarkMode ? Colors.white : const Color(0xFF0F172A),
+                letterSpacing: 0.3,
+              ),
+            ),
+          ],
         ),
-        SizedBox(height: isMobile ? 12 : 16),
+        const SizedBox(height: 8),
         GridView.count(
           crossAxisCount: isMobile ? 2 : 3,
-          mainAxisSpacing: isMobile ? 8 : 10,
-          crossAxisSpacing: isMobile ? 8 : 10,
+          mainAxisSpacing: 8,
+          crossAxisSpacing: 8,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          childAspectRatio: isMobile ? 2.4 : 2.8,
+          padding: EdgeInsets.zero,
+          childAspectRatio: isMobile ? 2.8 : 2.8,
           children: actions.map((action) {
             if (action.label == "Settings") {
               return _buildSettingsCard(isMobile, action);
@@ -484,11 +480,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           ),
           borderRadius: BorderRadius.circular(14),
           child: Padding(
-            // ✅ SMALLER padding
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             child: Row(
               children: [
-                // ✅ HORIZONTAL LAYOUT: icon left, text right — saves vertical space
                 Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
@@ -504,11 +498,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       ),
                     ],
                   ),
-                  child: Icon(
-                    action.icon,
-                    color: Colors.white,
-                    size: 16,
-                  ),
+                  child: Icon(action.icon, color: Colors.white, size: 15),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -517,7 +507,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: isDarkMode ? Colors.white : const Color(0xFF0F172A),
+                      color: isDarkMode
+                          ? Colors.white
+                          : const Color(0xFF0F172A),
                       height: 1.3,
                     ),
                   ),
@@ -550,7 +542,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           onTap: () => _showSettingsBottomSheet(isMobile),
           borderRadius: BorderRadius.circular(14),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             child: Row(
               children: [
                 Container(
@@ -568,7 +560,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       ),
                     ],
                   ),
-                  child: Icon(action.icon, color: Colors.white, size: 16),
+                  child: Icon(action.icon, color: Colors.white, size: 15),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -577,7 +569,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: isDarkMode ? Colors.white : const Color(0xFF0F172A),
+                      color: isDarkMode
+                          ? Colors.white
+                          : const Color(0xFF0F172A),
                     ),
                   ),
                 ),
@@ -609,7 +603,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           onTap: () => _showHelpBottomSheet(isMobile),
           borderRadius: BorderRadius.circular(14),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             child: Row(
               children: [
                 Container(
@@ -627,7 +621,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       ),
                     ],
                   ),
-                  child: Icon(action.icon, color: Colors.white, size: 16),
+                  child: Icon(action.icon, color: Colors.white, size: 15),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -636,7 +630,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: isDarkMode ? Colors.white : const Color(0xFF0F172A),
+                      color: isDarkMode
+                          ? Colors.white
+                          : const Color(0xFF0F172A),
                     ),
                   ),
                 ),
@@ -692,7 +688,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            color: isDarkMode ? Colors.white : const Color(0xFF0F172A),
+                            color: isDarkMode
+                                ? Colors.white
+                                : const Color(0xFF0F172A),
                           ),
                         ),
                       ],
@@ -750,7 +748,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: isDarkMode ? Colors.white70 : const Color(0xFF64748B),
+                    color: isDarkMode
+                        ? Colors.white70
+                        : const Color(0xFF64748B),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -777,7 +777,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
-                              color: isDarkMode ? Colors.white : const Color(0xFF0F172A),
+                              color: isDarkMode
+                                  ? Colors.white
+                                  : const Color(0xFF0F172A),
                             ),
                           ),
                         ],
@@ -793,7 +795,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
-                              color: isDarkMode ? Colors.white : const Color(0xFF0F172A),
+                              color: isDarkMode
+                                  ? Colors.white
+                                  : const Color(0xFF0F172A),
                             ),
                           ),
                         ],
