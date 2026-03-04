@@ -9,6 +9,7 @@ import 'npt_entry_page.dart';
 import 'ctl_npt_entry_page.dart';
 import 'qc_entry_page.dart';
 import 'production_entry_page.dart';
+import './Plan no wise production entry page.dart';
 import 'kanban_board_page.dart';
 import 'sos_page.dart';
 
@@ -37,6 +38,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       color: const Color(0xFF60A5FA),
       menuId: 11,
       onTap: () => ProductionEntryPage(),
+    ),
+    _QuickAction(
+      label: "Plan Wise Production",
+      icon: Icons.assignment_rounded,
+      color: const Color(0xFF0EA5E9),
+      menuId: 205,
+      onTap: () => PlanNoWiseProductionEntryPage(),
     ),
     _QuickAction(
       label: "QC Entry",

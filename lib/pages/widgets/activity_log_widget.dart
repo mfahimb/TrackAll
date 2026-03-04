@@ -31,7 +31,7 @@ class ColDef {
   final String label;
   final int flex;
   final bool isDateTime;
-  final double minWidth; // fixed px width for horizontal-scroll table
+  final double minWidth;
   const ColDef(
     this.key,
     this.label, {
@@ -46,7 +46,7 @@ String _formatCell(String value, {bool isDateTime = false}) {
   try {
     final clean = value.replaceAll(RegExp(r'Z$|\+[0-9:]+$'), '');
     final dt = DateTime.parse(clean);
-    return DateFormat('HH:mm').format(dt);
+    return DateFormat('hh:mm a').format(dt);
   } catch (_) {
     return value;
   }
@@ -66,7 +66,24 @@ const List<LogCard> _allLogCards = [
       ColDef("LINE_NAME",    "Line",      minWidth: 110),
       ColDef("PD_SIZE",      "Size",      minWidth: 70),
       ColDef("PD_PROD_QTY",  "Qty",       minWidth: 70),
-      ColDef("CREATED_AT",   "Time",      minWidth: 65, isDateTime: true),
+      ColDef("CREATED_AT",   "Time",      minWidth: 82, isDateTime: true),
+    ],
+  ),
+  LogCard(
+    title: "Plan Wise Production",
+    icon: Icons.assignment_rounded,
+    color: Color(0xFF0EA5E9),
+    menuId: 205,
+    qryType: "PLAN_PRO_REPORT",           // ✅ correct key
+    columns: [
+      ColDef("ORDER_NO",     "Order No",  minWidth: 110),
+      ColDef("ITEM_NAME",    "Item Name", minWidth: 180),
+      ColDef("PD_RPD_PLN_NO", "Plan No",   minWidth: 110),
+      ColDef("PROCRSS_NAME", "Process",   minWidth: 120),
+      ColDef("LINE_NAME",    "Line",      minWidth: 110),
+      ColDef("PD_SIZE",      "Size",      minWidth: 70),
+      ColDef("PD_PROD_QTY",  "Qty",       minWidth: 70),
+      ColDef("CREATED_AT",   "Time",      minWidth: 82, isDateTime: true),
     ],
   ),
   LogCard(
@@ -82,7 +99,7 @@ const List<LogCard> _allLogCards = [
       ColDef("LINE_NAME",       "Line",       minWidth: 110),
       ColDef("EMP_NAME",        "Employee",   minWidth: 130),
       ColDef("PDQC_REJECT_QTY", "Reject Qty", minWidth: 90),
-      ColDef("PDQC_CREATED_AT", "Time",       minWidth: 65, isDateTime: true),
+      ColDef("PDQC_CREATED_AT", "Time",       minWidth: 82, isDateTime: true),
     ],
   ),
   LogCard(
@@ -126,7 +143,7 @@ const List<LogCard> _allLogCards = [
       ColDef("LSH_LINE_STAT", "Status",  minWidth: 100),
       ColDef("LSH_CMNT",      "Comment", minWidth: 180),
       ColDef("LSH_USER",      "User",    minWidth: 120),
-      ColDef("LSH_DATE",      "Time",    minWidth: 65, isDateTime: true),
+      ColDef("LSH_DATE",      "Time",    minWidth: 82, isDateTime: true),
     ],
   ),
 ];
@@ -134,6 +151,7 @@ const List<LogCard> _allLogCards = [
 // Reports that are company-wide (no P_APP_USER)
 const _noUserReports = {
   "PRO_REPORT",
+  "PLAN_PRO_REPORT",           // ✅ correct key
   "NPT_REPORT",
   "CTL_NPT_REPORT",
   "QC_REPORT",
@@ -176,9 +194,21 @@ class ActivityLogService {
       if (resp.statusCode != 200) return [];
 
       final decoded = jsonDecode(resp.body) as Map;
-      if (!decoded.containsKey(qryType)) return [];
+      debugPrint("🔑 [$qryType] Keys returned: ${decoded.keys.toList()}");
 
-      final List raw = decoded[qryType] as List;
+      List raw = [];
+      if (decoded.containsKey(qryType)) {
+        raw = decoded[qryType] as List;
+      } else {
+        for (final entry in decoded.entries) {
+          if (entry.value is List) {
+            debugPrint("⚠️ [$qryType] key not found, using fallback: ${entry.key}");
+            raw = entry.value as List;
+            break;
+          }
+        }
+      }
+
       if (raw.isEmpty) return [];
 
       final result = <Map<String, String>>[];
@@ -195,9 +225,11 @@ class ActivityLogService {
         });
         if (hasReal) result.add(row);
       }
+
+      debugPrint("✅ [$qryType] ${result.length} rows loaded");
       return result;
     } catch (e) {
-      debugPrint("❌ fetchLog error: $e");
+      debugPrint("❌ fetchLog error [$qryType]: $e");
       return [];
     }
   }
@@ -218,6 +250,7 @@ class ActivityLogService {
         final resp = await http.get(uri).timeout(const Duration(seconds: 8));
         if (resp.statusCode == 200) {
           final decoded = jsonDecode(resp.body) as Map;
+          debugPrint("🔑 PROBE [$qry] Keys: ${decoded.keys.toList()}");
           if (decoded.containsKey(qry)) {
             debugPrint("✅ MY LOG [$qry] => ${(decoded[qry] as List).length} rows");
           }
@@ -242,7 +275,11 @@ class _ActivityLogSectionState extends State<ActivityLogSection> {
   final _service = ActivityLogService();
   String _appUser = "";
   String _company = "";
+
+  // Keyed by card.title (not qryType) to avoid collisions when two cards
+  // share the same qryType (e.g. Downtime Entry + CTL Downtime = NPT_REPORT)
   final Map<String, int?> _counts = {};
+
   bool _initialized = false;
   bool _loading = false;
 
@@ -283,7 +320,7 @@ class _ActivityLogSectionState extends State<ActivityLogSection> {
     if (mounted) {
       setState(() {
         _loading = true;
-        for (final c in cards) _counts[c.qryType] = null;
+        for (final c in cards) _counts[c.title] = null;
         _initialized = true;
       });
     }
@@ -293,7 +330,7 @@ class _ActivityLogSectionState extends State<ActivityLogSection> {
         appUser: _appUser,
         company: _company,
       );
-      return MapEntry(c.qryType, rows.length);
+      return MapEntry(c.title, rows.length);
     }));
     if (mounted) {
       setState(() {
@@ -386,7 +423,7 @@ class _ActivityLogSectionState extends State<ActivityLogSection> {
           children: cards
               .map((c) => _CountCard(
                     card: c,
-                    count: _counts[c.qryType],
+                    count: _counts[c.title],
                     onTap: () => _openDetail(c),
                   ))
               .toList(),
@@ -520,7 +557,6 @@ class _DetailSheetState extends State<_DetailSheet> {
   String _searchQuery = "";
   _Shift _selectedShift = _Shift.all;
   final TextEditingController _searchController = TextEditingController();
-  // Shared horizontal scroll controller so header & rows scroll together
   final ScrollController _hScrollCtrl = ScrollController();
 
   bool get _isKanban => widget.card.qryType == "KANBAN_REPORT";
@@ -596,11 +632,9 @@ class _DetailSheetState extends State<_DetailSheet> {
     }
   }
 
-  // Total table width = sum of all column minWidths + horizontal padding
   double _tableWidth(List<ColDef> cols) =>
       cols.fold(0.0, (s, c) => s + c.minWidth) + 32;
 
-  // Build a single table row (header when data==null)
   Widget _buildTableRow(List<ColDef> cols, Map<String, String>? data, int idx) {
     final isHeader = data == null;
     return Container(
@@ -898,7 +932,6 @@ class _DetailSheetState extends State<_DetailSheet> {
                         final effectiveWidth =
                             needsHScroll ? tWidth : constraints.maxWidth;
 
-                        // One horizontal scroll wraps BOTH header + body
                         return SingleChildScrollView(
                           controller: _hScrollCtrl,
                           scrollDirection: Axis.horizontal,
@@ -909,10 +942,7 @@ class _DetailSheetState extends State<_DetailSheet> {
                             width: effectiveWidth,
                             child: Column(
                               children: [
-                                // ── Header (sticks vertically, scrolls with body horizontally)
                                 _buildTableRow(displayCols, null, -1),
-
-                                // ── Body
                                 Expanded(
                                   child: _filteredRows.isEmpty &&
                                           _searchQuery.isNotEmpty

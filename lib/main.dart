@@ -10,6 +10,8 @@ import 'pages/widgets/splash_screen.dart';
 import 'pages/admin_panel.dart';
 import 'pages/sos_page.dart';
 import 'pages/production_entry_page.dart';
+import 'pages/Plan no wise production entry page.dart';
+import 'pages/user_log.dart';
 
 void main() {
   runApp(const TrackAllApp());

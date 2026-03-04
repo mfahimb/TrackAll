@@ -10,6 +10,7 @@ import '../company_select_page.dart';
 import '../sos_page.dart';
 import '../qc_entry_page.dart';
 import '../production_entry_page.dart';
+import '../Plan no wise production entry page.dart';
 import '../kanban_board_page.dart';
 import '../user_log.dart';
 
@@ -636,18 +637,26 @@ class _ModernSidebarState extends State<_ModernSidebar>
   List<_MenuItem> _getProductionItems() {
     final items = <_MenuItem>[];
     if (widget.assignedMenuIds.contains(133))
-      items.add(_MenuItem(label: "QC Entry",
+      items.add(_MenuItem(
+          label: "QC Entry",
           icon: Icons.verified_rounded,
           onTap: () => Navigator.push(context,
               MaterialPageRoute(builder: (_) => const QCEntryPage()))));
     if (widget.assignedMenuIds.contains(11))
-      items.add(_MenuItem(label: "Production Entry",
+      items.add(_MenuItem(
+          label: "Production Entry",
           icon: Icons.add_chart_rounded,
           onTap: () => Navigator.push(context,
               MaterialPageRoute(builder: (_) => const ProductionEntryPage()))));
+    if (widget.assignedMenuIds.contains(205))
+      items.add(_MenuItem(
+          label: "Plan No Wise Production",
+          icon: Icons.event_note_rounded,
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(
+                  builder: (_) => const PlanNoWiseProductionEntryPage()))));
     return items;
   }
-
   List<_MenuItem> _getWorkStudyItems() {
     final items = <_MenuItem>[];
     if (widget.assignedMenuIds.contains(40))
