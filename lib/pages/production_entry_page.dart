@@ -6,7 +6,6 @@ import 'package:trackall_app/services/lov_service.dart';
 
 // =====================================================================
 // SCROLLABLE OVERFLOW TEXT WIDGET
-// Shows a → arrow when text is cut off. Tap arrow to scroll horizontally.
 // =====================================================================
 
 class OverflowScrollText extends StatefulWidget {
@@ -61,7 +60,6 @@ class _OverflowScrollTextState extends State<OverflowScrollText> {
 
     final renderBox = context.findRenderObject() as RenderBox?;
     if (renderBox == null) return;
-    // available width = container width minus arrow width (20) minus padding
     final available = renderBox.size.width - 20 - 24;
     setState(() => _isOverflowing = tp.width > available);
   }
@@ -121,8 +119,7 @@ class _OverflowScrollTextState extends State<OverflowScrollText> {
 }
 
 // =====================================================================
-// PRODUCTION ENTRY PAGE
-// Menu ID: 11
+// PRODUCTION ENTRY PAGE  (Menu ID: 11)
 // =====================================================================
 
 class ProductionEntryPage extends StatefulWidget {
@@ -296,6 +293,28 @@ class _ProductionEntryPageState extends State<ProductionEntryPage> {
     }
   }
 
+  // ── Clear all selections ─────────────────────────────────────────
+  void _clearAll() {
+    setState(() {
+      itemId = null;       itemLabel = null;
+      jobNo = null;        orderNo = null;       articleNo = null;
+      bpoId = null;
+      processId = null;    processLabel = null;
+      lineId = null;       lineLabel = null;
+      sizeId = null;       size = null;
+      remainingQty = "0";
+      selectedItemMap = null;
+      processList.clear(); lineList.clear(); sizeList.clear();
+      productionQty = null; productionQtyValue = 0;
+      productionQtyController.clear();
+      bundleQtyValue = 1;  bundleQty = "1";
+      bundleQtyController.text = "1";
+      rejectQtyValue = 0;  rejectQty = "0";
+      rejectQtyController.text = "0";
+      flag = "I";
+    });
+  }
+
   void _showError(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -379,29 +398,104 @@ class _ProductionEntryPageState extends State<ProductionEntryPage> {
                       spacing: 12,
                       runSpacing: 12,
                       children: [
-                        // ── ITEM ──────────────────────────────────────
-                        _itemTableDropdown(
-                          context, "Item Description/ Color *", itemLabel,
-                          itemList, itemDisplayCount,
-                          (id, label) async {
-                            setState(() {
-                              itemId = id; itemLabel = label;
-                              selectedItemMap = itemList.firstWhere(
-                                (item) => item['id'] == id, orElse: () => {},
-                              );
-                              orderNo = selectedItemMap?["BPO_PO_NO"] ?? "";
-                              articleNo = selectedItemMap?["STYLE_NO"] ?? "";
-                              bpoId = null; jobNo = null;
-                              processList.clear(); processId = null; processLabel = null;
-                              lineList.clear(); lineId = null; lineLabel = null;
-                              sizeList.clear(); sizeId = null; size = null;
-                              remainingQty = "0";
-                            });
-                            await _loadJobNo();
-                            _loadProcess();
-                            _loadSizes();
-                          },
-                          double.infinity,
+
+                        // ── ITEM + CLEAR label row ────────────────────
+                        SizedBox(
+                          width: double.infinity,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Label row: text left, clear button right
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  const Text("Item Description/ Color *",
+                                      style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w800,
+                                          color: Colors.black)),
+                                  const Spacer(),
+                                  TextButton.icon(
+                                    onPressed: _clearAll,
+                                    icon: const Icon(Icons.refresh_rounded, size: 13),
+                                    label: const Text("Clear",
+                                        style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700)),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: Colors.red.shade400,
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 2),
+                                      backgroundColor: Colors.red.shade50,
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(20)),
+                                      minimumSize: Size.zero,
+                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              // Dropdown trigger (full width)
+                              InkWell(
+                                onTap: () => _itemTableDialog(
+                                  context,
+                                  "Item Description/ Color *",
+                                  itemList,
+                                  itemDisplayCount,
+                                  (id, label) async {
+                                    setState(() {
+                                      itemId = id; itemLabel = label;
+                                      selectedItemMap = itemList.firstWhere(
+                                        (item) => item['id'] == id,
+                                        orElse: () => {},
+                                      );
+                                      orderNo = selectedItemMap?["BPO_PO_NO"] ?? "";
+                                      articleNo = selectedItemMap?["STYLE_NO"] ?? "";
+                                      bpoId = null; jobNo = null;
+                                      processList.clear(); processId = null; processLabel = null;
+                                      lineList.clear(); lineId = null; lineLabel = null;
+                                      sizeList.clear(); sizeId = null; size = null;
+                                      remainingQty = "0";
+                                    });
+                                    await _loadJobNo();
+                                    _loadProcess();
+                                    _loadSizes();
+                                  },
+                                ),
+                                child: Container(
+                                  height: 38,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: Colors.grey.shade300),
+                                    boxShadow: const [
+                                      BoxShadow(
+                                          color: Color(0x0F000000),
+                                          blurRadius: 4,
+                                          offset: Offset(0, 2))
+                                    ],
+                                  ),
+                                  child: Row(children: [
+                                    Expanded(
+                                      child: OverflowScrollText(
+                                        text: itemLabel ?? "Select",
+                                        style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.black87),
+                                      ),
+                                    ),
+                                    const Padding(
+                                      padding: EdgeInsets.only(right: 4),
+                                      child: Icon(Icons.arrow_drop_down,
+                                          color: Colors.black87, size: 20),
+                                    ),
+                                  ]),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
 
                         // ── JOB + ORDER ───────────────────────────────
@@ -519,7 +613,6 @@ class _ProductionEntryPageState extends State<ProductionEntryPage> {
 
   // ===================== WIDGET HELPERS =====================
 
-  /// ReadOnly field — uses OverflowScrollText when not highlighted
   Widget _readOnly(String label, String? value, double width, {bool highlight = false}) {
     return SizedBox(
       width: width,
@@ -547,7 +640,6 @@ class _ProductionEntryPageState extends State<ProductionEntryPage> {
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.grey.shade400),
                   ),
-            // ── OverflowScrollText replaces plain Text ──────────────
             child: highlight
                 ? Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -574,7 +666,6 @@ class _ProductionEntryPageState extends State<ProductionEntryPage> {
     );
   }
 
-  /// Dropdown trigger — uses OverflowScrollText for selected value
   Widget _modernDropdown(
     BuildContext context, String label, String? value,
     List<Map<String, String>> list, int displayCount,
@@ -618,7 +709,6 @@ class _ProductionEntryPageState extends State<ProductionEntryPage> {
     );
   }
 
-  /// Item dropdown trigger — uses OverflowScrollText
   Widget _itemTableDropdown(
     BuildContext context, String label, String? value,
     List<Map<String, String>> list, int displayCount,

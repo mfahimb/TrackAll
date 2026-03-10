@@ -74,18 +74,37 @@ const List<LogCard> _allLogCards = [
     icon: Icons.assignment_rounded,
     color: Color(0xFF0EA5E9),
     menuId: 205,
-    qryType: "PLAN_PRO_REPORT",           // ✅ correct key
+    qryType: "PLAN_PRO_REPORT",
     columns: [
-      ColDef("ORDER_NO",     "Order No",  minWidth: 110),
-      ColDef("ITEM_NAME",    "Item Name", minWidth: 180),
+      ColDef("ORDER_NO",      "Order No",  minWidth: 110),
+      ColDef("ITEM_NAME",     "Item Name", minWidth: 180),
       ColDef("PD_RPD_PLN_NO", "Plan No",   minWidth: 110),
-      ColDef("PROCRSS_NAME", "Process",   minWidth: 120),
-      ColDef("LINE_NAME",    "Line",      minWidth: 110),
-      ColDef("PD_SIZE",      "Size",      minWidth: 70),
-      ColDef("PD_PROD_QTY",  "Qty",       minWidth: 70),
-      ColDef("CREATED_AT",   "Time",      minWidth: 82, isDateTime: true),
+      ColDef("PROCRSS_NAME",  "Process",   minWidth: 120),
+      ColDef("LINE_NAME",     "Line",      minWidth: 110),
+      ColDef("PD_SIZE",       "Size",      minWidth: 70),
+      ColDef("PD_PROD_QTY",   "Qty",       minWidth: 70),
+      ColDef("CREATED_AT",    "Time",      minWidth: 82, isDateTime: true),
     ],
   ),
+
+  // ── Packing Entry — placed before QC Entry ───────────────────────
+  LogCard(
+    title: "Packing Entry",
+    icon: Icons.inventory_2_rounded,
+    color: Color(0xFF06B6D4),
+    menuId: 230,                          // update menuId to match backend
+    qryType: "PACKING_REPORT",
+    columns: [
+      ColDef("ORDER_NO",       "Order No",    minWidth: 110),
+      ColDef("ITEM_NAME",      "Item Name",   minWidth: 180),
+      ColDef("LINE_NAME",      "Line",        minWidth: 110),
+      ColDef("COUNTRY_NAME",   "Country",     minWidth: 110),
+      ColDef("PD_SIZE",        "Size",        minWidth: 70),
+      ColDef("PD_PROD_QTY",    "Packing Qty", minWidth: 100),
+      ColDef("CREATED_AT",     "Time",        minWidth: 82, isDateTime: true),
+    ],
+  ),
+
   LogCard(
     title: "QC Entry",
     icon: Icons.verified_rounded,
@@ -151,7 +170,8 @@ const List<LogCard> _allLogCards = [
 // Reports that are company-wide (no P_APP_USER)
 const _noUserReports = {
   "PRO_REPORT",
-  "PLAN_PRO_REPORT",           // ✅ correct key
+  "PLAN_PRO_REPORT",
+  "PACKING_REPORT",
   "NPT_REPORT",
   "CTL_NPT_REPORT",
   "QC_REPORT",
@@ -276,12 +296,15 @@ class _ActivityLogSectionState extends State<ActivityLogSection> {
   String _appUser = "";
   String _company = "";
 
-  // Keyed by card.title (not qryType) to avoid collisions when two cards
-  // share the same qryType (e.g. Downtime Entry + CTL Downtime = NPT_REPORT)
+  // Keyed by card.title to avoid collisions when two cards share the same qryType
   final Map<String, int?> _counts = {};
 
   bool _initialized = false;
   bool _loading = false;
+
+  // ── "See More" collapse / expand ─────────────────────────────────
+  static const int _previewCount = 6; // cards shown before "See More"
+  bool _expanded = false;
 
   @override
   void initState() {
@@ -359,9 +382,36 @@ class _ActivityLogSectionState extends State<ActivityLogSection> {
     final cards = _visibleCards;
     if (!_initialized || cards.isEmpty) return const SizedBox.shrink();
 
+    // Split into preview and overflow cards
+    final previewCards = cards.length <= _previewCount
+        ? cards
+        : cards.sublist(0, _previewCount);
+    final overflowCards = cards.length <= _previewCount
+        ? <LogCard>[]
+        : cards.sublist(_previewCount);
+    final hasMore = overflowCards.isNotEmpty;
+
+    Widget _grid(List<LogCard> items) => GridView.count(
+          crossAxisCount: 2,
+          mainAxisSpacing: 8,
+          crossAxisSpacing: 8,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: EdgeInsets.zero,
+          childAspectRatio: 2.8,
+          children: items
+              .map((c) => _CountCard(
+                    card: c,
+                    count: _counts[c.title],
+                    onTap: () => _openDetail(c),
+                  ))
+              .toList(),
+        );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // ── Header ─────────────────────────────────────────────────
         Row(
           children: [
             Container(
@@ -412,22 +462,68 @@ class _ActivityLogSectionState extends State<ActivityLogSection> {
           ],
         ),
         const SizedBox(height: 10),
-        GridView.count(
-          crossAxisCount: 2,
-          mainAxisSpacing: 8,
-          crossAxisSpacing: 8,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          padding: EdgeInsets.zero,
-          childAspectRatio: 2.8,
-          children: cards
-              .map((c) => _CountCard(
-                    card: c,
-                    count: _counts[c.title],
-                    onTap: () => _openDetail(c),
-                  ))
-              .toList(),
-        ),
+
+        // ── Always-visible first N cards ────────────────────────────
+        _grid(previewCards),
+
+        // ── Expandable overflow cards ────────────────────────────────
+        if (hasMore) ...[
+          // Animated expand/collapse
+          AnimatedCrossFade(
+            duration: const Duration(milliseconds: 280),
+            crossFadeState: _expanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            firstChild: const SizedBox.shrink(),
+            secondChild: Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: _grid(overflowCards),
+            ),
+          ),
+          const SizedBox(height: 6),
+
+          // ── See More / See Less button ────────────────────────────
+          Center(
+            child: GestureDetector(
+              onTap: () => setState(() => _expanded = !_expanded),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF60A5FA).withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                      color: const Color(0xFF60A5FA).withOpacity(0.25)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _expanded
+                          ? "See Less"
+                          : "See More (${overflowCards.length})",
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF60A5FA),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    AnimatedRotation(
+                      turns: _expanded ? 0.5 : 0,
+                      duration: const Duration(milliseconds: 280),
+                      child: const Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        size: 15,
+                        color: Color(0xFF60A5FA),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -658,8 +754,7 @@ class _DetailSheetState extends State<_DetailSheet> {
             final val = data![c.key] ?? "-";
             final isReady = val.toLowerCase() == "ready";
             cell = Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
                 color: isReady
                     ? const Color(0xFF10B981).withOpacity(0.15)
@@ -745,8 +840,7 @@ class _DetailSheetState extends State<_DetailSheet> {
                     ]),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child:
-                      Icon(widget.card.icon, color: Colors.white, size: 18),
+                  child: Icon(widget.card.icon, color: Colors.white, size: 18),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -814,8 +908,7 @@ class _DetailSheetState extends State<_DetailSheet> {
             child: TextField(
               controller: _searchController,
               onChanged: (v) => setState(() => _searchQuery = v),
-              style:
-                  const TextStyle(fontSize: 12, color: Color(0xFF0F172A)),
+              style: const TextStyle(fontSize: 12, color: Color(0xFF0F172A)),
               decoration: InputDecoration(
                 hintText: "Search entries...",
                 hintStyle:
@@ -834,8 +927,8 @@ class _DetailSheetState extends State<_DetailSheet> {
                     : null,
                 filled: true,
                 fillColor: const Color(0xFFF1F5F9),
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 5),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                   borderSide: BorderSide.none,
@@ -847,8 +940,7 @@ class _DetailSheetState extends State<_DetailSheet> {
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                   borderSide: BorderSide(
-                      color: widget.card.color.withOpacity(0.4),
-                      width: 1.5),
+                      color: widget.card.color.withOpacity(0.4), width: 1.5),
                 ),
               ),
             ),
@@ -920,8 +1012,7 @@ class _DetailSheetState extends State<_DetailSheet> {
                             Text(
                               "No entries on ${DateFormat('dd MMM yyyy').format(_selectedDate)}",
                               style: TextStyle(
-                                  color: Colors.grey.shade500,
-                                  fontSize: 13),
+                                  color: Colors.grey.shade500, fontSize: 13),
                             ),
                           ],
                         ),
@@ -966,7 +1057,8 @@ class _DetailSheetState extends State<_DetailSheet> {
                                         )
                                       : ListView.builder(
                                           itemCount: _filteredRows.length,
-                                          itemBuilder: (_, i) => _buildTableRow(
+                                          itemBuilder: (_, i) =>
+                                              _buildTableRow(
                                             displayCols,
                                             _filteredRows[i],
                                             i,
@@ -1007,8 +1099,7 @@ class _ShiftTab extends StatelessWidget {
       onTap: () => onTap(shift),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
         decoration: BoxDecoration(
           color: isActive ? color : color.withOpacity(0.08),
           borderRadius: BorderRadius.circular(20),

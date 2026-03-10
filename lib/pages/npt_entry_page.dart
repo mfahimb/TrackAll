@@ -149,6 +149,9 @@ class _NptEntryPageState extends State<NptEntryPage> {
 
   final TextEditingController _startController = TextEditingController();
   final TextEditingController _endController = TextEditingController();
+  final TextEditingController _smvController = TextEditingController();
+  final TextEditingController _operatorsController = TextEditingController();
+  final TextEditingController _remarksController = TextEditingController();
 
   List<Map<String, String>> buildingList = [],
       processList = [],
@@ -176,6 +179,17 @@ class _NptEntryPageState extends State<NptEntryPage> {
     super.initState();
     _dateController.text = DateFormat('dd-MM-yyyy').format(selectedDate);
     _loadInitialData();
+  }
+
+  @override
+  void dispose() {
+    _dateController.dispose();
+    _startController.dispose();
+    _endController.dispose();
+    _smvController.dispose();
+    _operatorsController.dispose();
+    _remarksController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadInitialData() async {
@@ -268,6 +282,31 @@ class _NptEntryPageState extends State<NptEntryPage> {
     }
   }
 
+  // ================= CLEAR ALL =================
+  void _clearAll() {
+    setState(() {
+      buildingId = null;          buildingLabel = null;
+      processId = null;           processLabel = null;
+      lineId = null;              lineLabel = null;
+      categoryId = null;          categoryLabel = null;
+      responsibleUserId = null;   responsibleUserLabel = null;
+      deptId = null;              deptLabel = null;
+      causeLabel = null;
+      machineNo = null;           machineLabel = null;
+      smv = null;
+      remarks = null;
+      gmtLossQty = null;
+      numberOfOperators = null;
+      startTime = null;           endTime = null;
+      lineList = [];
+    });
+    _startController.clear();
+    _endController.clear();
+    _smvController.clear();
+    _operatorsController.clear();
+    _remarksController.clear();
+  }
+
   // ================= SAVE =================
   Future<void> _handleSave() async {
     final requiredFields = [
@@ -352,8 +391,79 @@ class _NptEntryPageState extends State<NptEntryPage> {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: Column(
                   children: [
-                    _dateField("Date *", _dateController, pickDate,
-                        constraints.maxWidth - 32),
+                    // ── DATE + CLEAR button row ────────────────────
+                    SizedBox(
+                      width: constraints.maxWidth - 32,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              const Text("Date *",
+                                  style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.black)),
+                              const Spacer(),
+                              TextButton.icon(
+                                onPressed: _clearAll,
+                                icon: const Icon(Icons.refresh_rounded, size: 13),
+                                label: const Text("Clear",
+                                    style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700)),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.red.shade400,
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 2),
+                                  backgroundColor: Colors.red.shade50,
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(20)),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          GestureDetector(
+                            onTap: pickDate,
+                            child: Container(
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.grey.shade300),
+                                boxShadow: const [
+                                  BoxShadow(
+                                      color: Color(0x0F000000),
+                                      blurRadius: 4,
+                                      offset: Offset(0, 2))
+                                ],
+                              ),
+                              child: Row(children: [
+                                Expanded(
+                                  child: OverflowScrollText(
+                                    text: _dateController.text,
+                                    style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.black),
+                                  ),
+                                ),
+                                const Padding(
+                                  padding: EdgeInsets.only(right: 10),
+                                  child: Icon(Icons.calendar_today,
+                                      color: Colors.black54, size: 16),
+                                ),
+                              ]),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     Wrap(
                       spacing: 12,
@@ -408,14 +518,15 @@ class _NptEntryPageState extends State<NptEntryPage> {
 
                         _readOnlyField("Total (Min)", totalTimeFormatted, width),
 
-                        _textField("SMV", (v) => smv = v, width, isNumber: true),
+                        _textField("SMV", _smvController,
+                            (v) => smv = v, width, isNumber: true),
 
                         _modernDropdown(context, "Cause *", causeLabel,
                             downtimeCauseList, (id, label) {
                           setState(() => causeLabel = label);
                         }, width),
 
-                        _textField("Number of Operators",
+                        _textField("Number of Operators", _operatorsController,
                             (v) => numberOfOperators = v, width, isNumber: true),
 
                         _modernDropdown(context, "Responsible User *",
@@ -427,7 +538,8 @@ class _NptEntryPageState extends State<NptEntryPage> {
                           });
                         }, width),
 
-                        _textField("Remarks", (v) => remarks = v, width * 2 + 12),
+                        _textField("Remarks", _remarksController,
+                            (v) => remarks = v, width * 2 + 12),
 
                         const SizedBox(height: 12),
 
@@ -466,47 +578,6 @@ class _NptEntryPageState extends State<NptEntryPage> {
 
   // ===================== WIDGET HELPERS =====================
 
-  Widget _dateField(String label, TextEditingController controller,
-      VoidCallback onTap, double width) {
-    return SizedBox(
-      width: width,
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label,
-            style: const TextStyle(
-                fontSize: 11, fontWeight: FontWeight.w800, color: Colors.black)),
-        const SizedBox(height: 4),
-        GestureDetector(
-          onTap: onTap,
-          child: Container(
-            height: 38,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey.shade300),
-              boxShadow: const [
-                BoxShadow(color: Color(0x0F000000), blurRadius: 4, offset: Offset(0, 2))
-              ],
-            ),
-            child: Row(children: [
-              Expanded(
-                child: OverflowScrollText(
-                  text: controller.text,
-                  style: const TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black),
-                ),
-              ),
-              const Padding(
-                padding: EdgeInsets.only(right: 10),
-                child: Icon(Icons.calendar_today, color: Colors.black54, size: 16),
-              ),
-            ]),
-          ),
-        ),
-      ]),
-    );
-  }
-
-  /// Dropdown with OverflowScrollText for selected value
   Widget _modernDropdown(
     BuildContext context,
     String label,
@@ -553,7 +624,6 @@ class _NptEntryPageState extends State<NptEntryPage> {
     );
   }
 
-  /// Read-only field with OverflowScrollText
   Widget _readOnlyField(String label, String value, double width) {
     return SizedBox(
       width: width,
@@ -578,7 +648,6 @@ class _NptEntryPageState extends State<NptEntryPage> {
     );
   }
 
-  /// Time field with OverflowScrollText for displayed time
   Widget _timeField(String label, TextEditingController controller,
       VoidCallback onTap, double width, {IconData? icon}) {
     return SizedBox(
@@ -617,8 +686,8 @@ class _NptEntryPageState extends State<NptEntryPage> {
     );
   }
 
-  Widget _textField(String label, Function(String) onChanged, double width,
-      {bool isNumber = false}) {
+  Widget _textField(String label, TextEditingController controller,
+      Function(String) onChanged, double width, {bool isNumber = false}) {
     return SizedBox(
       width: width,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -635,6 +704,7 @@ class _NptEntryPageState extends State<NptEntryPage> {
             border: Border.all(color: Colors.grey.shade300),
           ),
           child: TextField(
+            controller: controller,
             keyboardType: isNumber
                 ? const TextInputType.numberWithOptions(decimal: true)
                 : TextInputType.text,

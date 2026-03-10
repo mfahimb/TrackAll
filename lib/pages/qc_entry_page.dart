@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trackall_app/pages/widgets/top_menu_bar.dart';
+import 'package:trackall_app/pages/widgets/loading_indicator.dart';
 import 'package:trackall_app/services/lov_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:camera/camera.dart';
@@ -160,7 +161,7 @@ class _QCEntryPageState extends State<QCEntryPage> {
 
   final List<Map<String, String>> sideList = [
     {"id": "RIGHT", "label": "Right"},
-    {"id": "LEFT", "label": "Left"},
+    {"id": "LEFT",  "label": "Left"},
   ];
 
   bool get hasImage => capturedImageFile != null || capturedImageBytes != null;
@@ -172,7 +173,6 @@ class _QCEntryPageState extends State<QCEntryPage> {
     setState(() => isLoading = true);
     final prefs = await SharedPreferences.getInstance();
     setState(() => appUser = prefs.getString('userId') ?? "");
-    debugPrint("✅ QC PAGE LOGIN USER => $appUser");
     await Future.wait([_loadItems(), _loadQcTypes(), _loadCheckers()]);
     setState(() => isLoading = false);
   }
@@ -261,6 +261,30 @@ class _QCEntryPageState extends State<QCEntryPage> {
     finally { setState(() => isLoading = false); }
   }
 
+  // ── Clear all ──────────────────────────────────────────────────────
+  void _clearAll() {
+    setState(() {
+      itemId = null;       itemLabel = null;
+      jobNo = null;        orderNo = null;       articleNo = null;
+      processId = null;    processLabel = null;
+      lineId = null;       lineLabel = null;
+      qcType = null;       qcTypeLabel = null;
+      size = null;         sizeId = null;
+      issueType = null;    issueTypeId = null;
+      checkedBy = null;    checkedById = null;
+      side = null;
+      quantity = null;     quantityValue = 0;
+      quantityController.clear();
+      capturedImageFile = null;
+      capturedImagePath = null;
+      capturedImageBytes = null;
+      selectedItemMap = null;
+      processList.clear(); lineList.clear();
+      sizeList.clear();    issueTypeList.clear();
+    });
+    _loadItems();
+  }
+
   Future<void> _captureImage() async {
     try {
       PermissionStatus status = await Permission.camera.status;
@@ -276,15 +300,15 @@ class _QCEntryPageState extends State<QCEntryPage> {
         if (result != null) {
           if (kIsWeb && result is Map) {
             setState(() {
-              capturedImagePath = result['path'];
+              capturedImagePath  = result['path'];
               capturedImageBytes = result['bytes'];
-              capturedImageFile = null;
+              capturedImageFile  = null;
             });
             _showSuccess("Image captured successfully");
           } else if (result is String) {
             setState(() {
-              capturedImageFile = File(result);
-              capturedImagePath = result;
+              capturedImageFile  = File(result);
+              capturedImagePath  = result;
               capturedImageBytes = null;
             });
             _showSuccess("Image captured successfully");
@@ -380,23 +404,93 @@ class _QCEntryPageState extends State<QCEntryPage> {
                       spacing: 12,
                       runSpacing: 12,
                       children: [
-                        // ── ITEM ──────────────────────────────────────
-                        _itemTableDropdown(context, "Item / Color *", itemLabel,
-                            itemList, itemDisplayCount, (id, label) async {
-                          setState(() {
-                            itemId = id; itemLabel = label;
-                            selectedItemMap = itemList.firstWhere(
-                                (item) => item['id'] == id, orElse: () => {});
-                            orderNo = selectedItemMap?["BPO_PO_NO"] ?? "";
-                            articleNo = selectedItemMap?["STYLE_NO"] ?? "";
-                            processList.clear(); processId = null; processLabel = null;
-                            lineList.clear(); lineId = null; lineLabel = null;
-                            sizeList.clear(); size = null; sizeId = null;
-                            issueTypeList.clear(); issueType = null; issueTypeId = null;
-                          });
-                          await _loadJobNo();
-                          _loadProcess(); _loadSizes();
-                        }, double.infinity),
+
+                        // ── ITEM + CLEAR label row ────────────────────
+                        SizedBox(
+                          width: double.infinity,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  const Text("Item / Color *",
+                                      style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w800,
+                                          color: Colors.black)),
+                                  const Spacer(),
+                                  TextButton.icon(
+                                    onPressed: _clearAll,
+                                    icon: const Icon(Icons.refresh_rounded, size: 13),
+                                    label: const Text("Clear",
+                                        style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700)),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: Colors.red.shade400,
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 2),
+                                      backgroundColor: Colors.red.shade50,
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(20)),
+                                      minimumSize: Size.zero,
+                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              InkWell(
+                                onTap: () => _itemTableDialog(
+                                  context, "Item / Color *",
+                                  itemList, itemDisplayCount,
+                                  (id, label) async {
+                                    setState(() {
+                                      itemId = id; itemLabel = label;
+                                      selectedItemMap = itemList.firstWhere(
+                                          (item) => item['id'] == id, orElse: () => {});
+                                      orderNo  = selectedItemMap?["BPO_PO_NO"] ?? "";
+                                      articleNo = selectedItemMap?["STYLE_NO"] ?? "";
+                                      processList.clear(); processId = null; processLabel = null;
+                                      lineList.clear(); lineId = null; lineLabel = null;
+                                      sizeList.clear(); size = null; sizeId = null;
+                                      issueTypeList.clear(); issueType = null; issueTypeId = null;
+                                    });
+                                    await _loadJobNo();
+                                    _loadProcess(); _loadSizes();
+                                  },
+                                ),
+                                child: Container(
+                                  height: 38,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: Colors.grey.shade300),
+                                    boxShadow: const [BoxShadow(
+                                        color: Color(0x0F000000),
+                                        blurRadius: 4, offset: Offset(0, 2))],
+                                  ),
+                                  child: Row(children: [
+                                    Expanded(
+                                      child: OverflowScrollText(
+                                        text: itemLabel ?? "Select",
+                                        style: const TextStyle(fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.black87),
+                                      ),
+                                    ),
+                                    const Padding(
+                                      padding: EdgeInsets.only(right: 4),
+                                      child: Icon(Icons.arrow_drop_down,
+                                          color: Colors.black87, size: 20),
+                                    ),
+                                  ]),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
 
                         // ── JOB + ORDER ────────────────────────────────
                         Row(children: [
@@ -550,14 +644,7 @@ class _QCEntryPageState extends State<QCEntryPage> {
               ),
             ],
           ),
-          if (isLoading)
-            Container(
-              color: Colors.black26,
-              child: const Center(
-                child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1A73E8))),
-              ),
-            ),
+          if (isLoading) const LoadingOverlay(),
         ],
       ),
     );
@@ -629,46 +716,6 @@ class _QCEntryPageState extends State<QCEntryPage> {
     );
   }
 
-  Widget _itemTableDropdown(
-    BuildContext context, String label, String? value,
-    List<Map<String, String>> list, int displayCount,
-    void Function(String, String) onSelect, double width,
-  ) {
-    return SizedBox(
-      width: width,
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label, style: const TextStyle(
-            fontSize: 11, fontWeight: FontWeight.w800, color: Colors.black)),
-        const SizedBox(height: 4),
-        InkWell(
-          onTap: () => _itemTableDialog(context, label, list, displayCount, onSelect),
-          child: Container(
-            height: 38,
-            decoration: BoxDecoration(
-              color: Colors.white, borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey.shade300),
-              boxShadow: const [BoxShadow(
-                  color: Color(0x0F000000), blurRadius: 4, offset: Offset(0, 2))],
-            ),
-            child: Row(children: [
-              Expanded(
-                child: OverflowScrollText(
-                  text: value ?? "Select",
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
-                      color: Colors.black87),
-                ),
-              ),
-              const Padding(
-                padding: EdgeInsets.only(right: 4),
-                child: Icon(Icons.arrow_drop_down, color: Colors.black87, size: 20),
-              ),
-            ]),
-          ),
-        ),
-      ]),
-    );
-  }
-
   Widget _quantityField(double width) {
     return SizedBox(
       width: width,
@@ -683,7 +730,7 @@ class _QCEntryPageState extends State<QCEntryPage> {
             color: const Color(0xFFF7FAFF),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-                color: const Color(0xFF1A73E8).withOpacity(0.25), width: 1.2),
+                color: const Color(0xFF1A73E8).withValues(alpha: 0.25), width: 1.2),
             boxShadow: const [BoxShadow(
                 color: Color(0x14000000), blurRadius: 4, offset: Offset(0, 2))],
           ),
@@ -712,27 +759,21 @@ class _QCEntryPageState extends State<QCEntryPage> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _qtyIcon(
-              icon: Icons.remove, size: 16, boxSize: 30,
+            _qtyIcon(icon: Icons.remove, size: 16, boxSize: 30,
               isDisabled: quantityValue == 0,
               onTap: () {
-                if (quantityValue > 0) {
-                  setState(() {
-                    quantityValue--;
-                    quantityController.text = quantityValue.toString();
-                    quantity = quantityController.text;
-                  });
-                }
-              },
-            ),
-            _qtyIcon(
-              icon: Icons.add, size: 16, boxSize: 30,
+                if (quantityValue > 0) setState(() {
+                  quantityValue--;
+                  quantityController.text = quantityValue.toString();
+                  quantity = quantityController.text;
+                });
+              }),
+            _qtyIcon(icon: Icons.add, size: 16, boxSize: 30,
               onTap: () => setState(() {
                 quantityValue++;
                 quantityController.text = quantityValue.toString();
                 quantity = quantityController.text;
-              }),
-            ),
+              })),
           ],
         ),
       ]),
@@ -766,143 +807,117 @@ class _QCEntryPageState extends State<QCEntryPage> {
     void Function(String, String) onSelect,
   ) {
     List<Map<String, String>> filtered = List.from(items);
-    String currentSearch = "";
     showModalBottomSheet(
       context: context, isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-      builder: (context) {
-        return StatefulBuilder(builder: (c, setS) {
-          int currentDisplayCount = items.length < 10 ? items.length : 10;
-          return Container(
-            height: MediaQuery.of(context).size.height * 0.85,
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-            child: Column(children: [
-              Container(width: 40, height: 4,
-                  decoration: BoxDecoration(color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(2))),
-              const SizedBox(height: 12),
-              Text("Select $title", style: const TextStyle(
-                  fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black)),
-              const SizedBox(height: 12),
-              Container(
-                height: 45, padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(color: const Color(0xFFF1F3F4),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.grey.shade300)),
-                child: TextField(
-                  autofocus: false,
-                  onChanged: (v) => setS(() {
-                    currentSearch = v.toLowerCase();
-                    filtered = items.where((e) =>
-                        (e["label"] ?? "").toLowerCase().contains(currentSearch) ||
-                        (e["BPO_PO_NO"] ?? "").toLowerCase().contains(currentSearch) ||
-                        (e["STYLE_NO"] ?? "").toLowerCase().contains(currentSearch)).toList();
-                    currentDisplayCount = 10;
-                  }),
-                  decoration: const InputDecoration(
-                      prefixIcon: Icon(Icons.search, color: Colors.black54),
-                      hintText: "Search by color, order no, or article...",
-                      border: InputBorder.none),
-                ),
+      builder: (context) => StatefulBuilder(builder: (c, setS) {
+        int cnt = items.length < 10 ? items.length : 10;
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.85,
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+          child: Column(children: [
+            Container(width: 40, height: 4,
+                decoration: BoxDecoration(color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 12),
+            Text("Select $title", style: const TextStyle(
+                fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black)),
+            const SizedBox(height: 12),
+            Container(
+              height: 45, padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(color: const Color(0xFFF1F3F4),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.grey.shade300)),
+              child: TextField(
+                autofocus: false,
+                onChanged: (v) => setS(() {
+                  final q = v.toLowerCase();
+                  filtered = items.where((e) =>
+                      (e["label"] ?? "").toLowerCase().contains(q) ||
+                      (e["BPO_PO_NO"] ?? "").toLowerCase().contains(q) ||
+                      (e["STYLE_NO"]  ?? "").toLowerCase().contains(q)).toList();
+                  cnt = 10;
+                }),
+                decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.search, color: Colors.black54),
+                    hintText: "Search by color, order no, or article...",
+                    border: InputBorder.none),
               ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                decoration: const BoxDecoration(color: Color(0xFF1A73E8),
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(8))),
-                child: const Row(children: [
-                  Expanded(flex: 2, child: Text("Color/Item Desc",
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800,
-                          color: Colors.white))),
-                  SizedBox(width: 8),
-                  Expanded(flex: 1, child: Text("Order No.",
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800,
-                          color: Colors.white))),
-                  SizedBox(width: 8),
-                  Expanded(flex: 1, child: Text("Article Name",
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800,
-                          color: Colors.white))),
-                ]),
-              ),
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300),
-                      borderRadius: const BorderRadius.vertical(
-                          bottom: Radius.circular(8))),
-                  child: filtered.isEmpty
-                      ? const Center(child: Text("No items found",
-                          style: TextStyle(fontSize: 14, color: Colors.grey)))
-                      : StatefulBuilder(builder: (context, setModalState) {
-                          return ListView.builder(
-                            itemCount: currentDisplayCount < filtered.length
-                                ? currentDisplayCount + 1 : currentDisplayCount,
-                            itemBuilder: (_, index) {
-                              if (index == currentDisplayCount &&
-                                  currentDisplayCount < filtered.length) {
-                                return Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 4.0),
-                                  child: Center(
-                                    child: ElevatedButton(
-                                      onPressed: () =>
-                                          setModalState(() => currentDisplayCount += 10),
-                                      style: ElevatedButton.styleFrom(
-                                          backgroundColor: const Color(0xFF1A73E8),
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 16, vertical: 6),
-                                          minimumSize: Size.zero),
-                                      child: const Text('Show More',
-                                          style: TextStyle(color: Colors.white,
-                                              fontWeight: FontWeight.bold, fontSize: 11)),
-                                    ),
-                                  ),
-                                );
-                              }
-                              final item = filtered[index];
-                              return InkWell(
-                                onTap: () {
-                                  onSelect(item["id"] ?? "", item["label"] ?? "");
-                                  Navigator.pop(context);
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      vertical: 12, horizontal: 12),
-                                  decoration: BoxDecoration(border: Border(
-                                      bottom: BorderSide(color: Colors.grey.shade300))),
-                                  child: Row(children: [
-                                    Expanded(flex: 2, child: Text(item["label"] ?? "",
-                                        style: const TextStyle(fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.black87),
-                                        overflow: TextOverflow.ellipsis)),
-                                    const SizedBox(width: 8),
-                                    Expanded(flex: 1, child: Text(
-                                        item["BPO_PO_NO"] ?? "-",
-                                        style: const TextStyle(fontSize: 12,
-                                            fontWeight: FontWeight.w500,
-                                            color: Colors.black87),
-                                        overflow: TextOverflow.ellipsis)),
-                                    const SizedBox(width: 8),
-                                    Expanded(flex: 1, child: Text(
-                                        item["STYLE_NO"] ?? "-",
-                                        style: const TextStyle(fontSize: 12,
-                                            fontWeight: FontWeight.w500,
-                                            color: Colors.black87),
-                                        overflow: TextOverflow.ellipsis)),
-                                  ]),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+              decoration: const BoxDecoration(color: Color(0xFF1A73E8),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(8))),
+              child: const Row(children: [
+                Expanded(flex: 2, child: Text("Color/Item Desc",
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white))),
+                SizedBox(width: 8),
+                Expanded(flex: 1, child: Text("Order No.",
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white))),
+                SizedBox(width: 8),
+                Expanded(flex: 1, child: Text("Article Name",
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white))),
+              ]),
+            ),
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: const BorderRadius.vertical(bottom: Radius.circular(8))),
+                child: filtered.isEmpty
+                    ? const Center(child: Text("No items found",
+                        style: TextStyle(fontSize: 14, color: Colors.grey)))
+                    : StatefulBuilder(builder: (context, setMS) {
+                        return ListView.builder(
+                          itemCount: cnt < filtered.length ? cnt + 1 : filtered.length,
+                          itemBuilder: (_, idx) {
+                            if (idx == cnt && cnt < filtered.length) {
+                              return Center(child: Padding(
+                                padding: const EdgeInsets.all(4),
+                                child: ElevatedButton(
+                                  onPressed: () => setMS(() => cnt += 10),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF1A73E8),
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                                    minimumSize: Size.zero),
+                                  child: const Text('Show More', style: TextStyle(
+                                      color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
                                 ),
-                              );
-                            },
-                          );
-                        }),
-                ),
+                              ));
+                            }
+                            final item = filtered[idx];
+                            return InkWell(
+                              onTap: () { onSelect(item["id"] ?? "", item["label"] ?? ""); Navigator.pop(context); },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                                decoration: BoxDecoration(border: Border(
+                                    bottom: BorderSide(color: Colors.grey.shade300))),
+                                child: Row(children: [
+                                  Expanded(flex: 2, child: Text(item["label"] ?? "",
+                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black87),
+                                      overflow: TextOverflow.ellipsis)),
+                                  const SizedBox(width: 8),
+                                  Expanded(flex: 1, child: Text(item["BPO_PO_NO"] ?? "-",
+                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.black87),
+                                      overflow: TextOverflow.ellipsis)),
+                                  const SizedBox(width: 8),
+                                  Expanded(flex: 1, child: Text(item["STYLE_NO"] ?? "-",
+                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.black87),
+                                      overflow: TextOverflow.ellipsis)),
+                                ]),
+                              ),
+                            );
+                          },
+                        );
+                      }),
               ),
-            ]),
-          );
-        });
-      },
+            ),
+          ]),
+        );
+      }),
     );
   }
 
@@ -917,78 +932,72 @@ class _QCEntryPageState extends State<QCEntryPage> {
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-      builder: (context) {
-        return StatefulBuilder(builder: (c, setS) {
-          int currentDisplayCount = items.length < 10 ? items.length : 10;
-          return Container(
-            height: MediaQuery.of(context).size.height * 0.80,
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-            child: Column(children: [
-              Container(width: 40, height: 4,
-                  decoration: BoxDecoration(color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(2))),
-              const SizedBox(height: 12),
-              Text("Select $title", style: const TextStyle(
-                  fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black)),
-              const SizedBox(height: 12),
-              Container(
-                height: 45, padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(color: const Color(0xFFF1F3F4),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.grey.shade300)),
-                child: TextField(
-                  autofocus: false,
-                  onChanged: (v) => setS(() {
-                    filtered = items.where((e) =>
-                        e["label"]!.toLowerCase().contains(v.toLowerCase())).toList();
-                    currentDisplayCount = 10;
-                  }),
-                  decoration: const InputDecoration(
-                      prefixIcon: Icon(Icons.search, color: Colors.black54),
-                      hintText: "Search...", border: InputBorder.none),
-                ),
+      builder: (context) => StatefulBuilder(builder: (c, setS) {
+        int cnt = items.length < 10 ? items.length : 10;
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.80,
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+          child: Column(children: [
+            Container(width: 40, height: 4,
+                decoration: BoxDecoration(color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 12),
+            Text("Select $title", style: const TextStyle(
+                fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black)),
+            const SizedBox(height: 12),
+            Container(
+              height: 45, padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(color: const Color(0xFFF1F3F4),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.grey.shade300)),
+              child: TextField(
+                autofocus: false,
+                onChanged: (v) => setS(() {
+                  filtered = items.where((e) =>
+                      (e["label"] ?? "").toLowerCase().contains(v.toLowerCase())).toList();
+                  cnt = 10;
+                }),
+                decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.search, color: Colors.black54),
+                    hintText: "Search...", border: InputBorder.none),
               ),
-              const SizedBox(height: 12),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: currentDisplayCount < filtered.length
-                      ? currentDisplayCount + 1 : currentDisplayCount,
-                  itemBuilder: (context, index) {
-                    if (index == currentDisplayCount &&
-                        currentDisplayCount < filtered.length) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4.0),
-                        child: Center(
-                          child: ElevatedButton(
-                            onPressed: () => setS(() => currentDisplayCount += 10),
-                            style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF1A73E8),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 6),
-                                minimumSize: Size.zero),
-                            child: const Text('Show More',
-                                style: TextStyle(color: Colors.white,
-                                    fontWeight: FontWeight.bold, fontSize: 11)),
-                          ),
-                        ),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: filtered.isEmpty
+                  ? const Center(child: Text("No items found",
+                      style: TextStyle(fontSize: 14, color: Colors.grey)))
+                  : StatefulBuilder(builder: (context, setMS) {
+                      return ListView.builder(
+                        itemCount: cnt < filtered.length ? cnt + 1 : filtered.length,
+                        itemBuilder: (context, idx) {
+                          if (idx == cnt && cnt < filtered.length) {
+                            return Center(child: Padding(
+                              padding: const EdgeInsets.all(4),
+                              child: ElevatedButton(
+                                onPressed: () => setMS(() => cnt += 10),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF1A73E8),
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                                  minimumSize: Size.zero),
+                                child: const Text('Show More', style: TextStyle(
+                                    color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
+                              ),
+                            ));
+                          }
+                          final item = filtered[idx];
+                          return ListTile(
+                            title: Text(item["label"] ?? "", style: const TextStyle(
+                                fontSize: 13, fontWeight: FontWeight.w600)),
+                            onTap: () { onSelect(item["id"] ?? "", item["label"] ?? ""); Navigator.pop(context); },
+                          );
+                        },
                       );
-                    }
-                    final item = filtered[index];
-                    return ListTile(
-                      title: Text(item["label"]!, style: const TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w600)),
-                      onTap: () {
-                        onSelect(item["id"]!, item["label"]!);
-                        Navigator.pop(context);
-                      },
-                    );
-                  },
-                ),
-              ),
-            ]),
-          );
-        });
-      },
+                    }),
+            ),
+          ]),
+        );
+      }),
     );
   }
 }
@@ -996,7 +1005,6 @@ class _QCEntryPageState extends State<QCEntryPage> {
 // ===================== CAMERA SCREEN =====================
 class CameraScreen extends StatefulWidget {
   const CameraScreen({super.key});
-
   @override
   State<CameraScreen> createState() => _CameraScreenState();
 }
@@ -1012,7 +1020,7 @@ class _CameraScreenState extends State<CameraScreen> {
   Future<void> _initializeCamera() async {
     try {
       _cameras = await availableCameras();
-      if (_cameras == null || _cameras!.isEmpty) { debugPrint("❌ No cameras available"); return; }
+      if (_cameras == null || _cameras!.isEmpty) return;
       _controller = CameraController(_cameras![0], ResolutionPreset.high,
           enableAudio: false, imageFormatGroup: ImageFormatGroup.jpeg);
       await _controller!.initialize();
@@ -1033,8 +1041,7 @@ class _CameraScreenState extends State<CameraScreen> {
           final bytes = response.bodyBytes;
           if (bytes.isEmpty) {
             if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                content: Text("Failed to capture image - empty data"),
-                backgroundColor: Colors.red));
+                content: Text("Failed to capture image - empty data"), backgroundColor: Colors.red));
             return;
           }
           if (mounted) Navigator.pop(context, {'path': image.path, 'bytes': bytes});
@@ -1075,19 +1082,17 @@ class _CameraScreenState extends State<CameraScreen> {
                 icon: const Icon(Icons.close, color: Colors.white, size: 32))),
         Positioned(
           bottom: 40, left: 0, right: 0,
-          child: Center(
-            child: GestureDetector(
-              onTap: _takePicture,
-              child: Container(
-                width: 70, height: 70,
-                decoration: BoxDecoration(shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 4)),
-                child: Container(margin: const EdgeInsets.all(6),
-                    decoration: const BoxDecoration(
-                        color: Colors.white, shape: BoxShape.circle)),
-              ),
+          child: Center(child: GestureDetector(
+            onTap: _takePicture,
+            child: Container(
+              width: 70, height: 70,
+              decoration: BoxDecoration(shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 4)),
+              child: Container(margin: const EdgeInsets.all(6),
+                  decoration: const BoxDecoration(
+                      color: Colors.white, shape: BoxShape.circle)),
             ),
-          ),
+          )),
         ),
       ]),
     );

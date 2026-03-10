@@ -13,6 +13,8 @@ import '../production_entry_page.dart';
 import '../Plan no wise production entry page.dart';
 import '../kanban_board_page.dart';
 import '../user_log.dart';
+import '../packing_production_entry_page.dart';
+import '../plan_wise_packing_entry_page.dart';
 
 // ─────────────────────────────────────────────
 // DESIGN TOKENS
@@ -655,8 +657,25 @@ class _ModernSidebarState extends State<_ModernSidebar>
           onTap: () => Navigator.push(context,
               MaterialPageRoute(
                   builder: (_) => const PlanNoWiseProductionEntryPage()))));
+    if (widget.assignedMenuIds.contains(37))
+      items.add(_MenuItem(
+          label: "Packing Entry",
+          icon: Icons.inventory_2_rounded,
+          onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const PackingProductionEntryPage()))));
+    if (widget.assignedMenuIds.contains(238))
+      items.add(_MenuItem(
+          label: "Plan Wise Packing Entry",
+          icon: Icons.inventory_outlined,
+          onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const PlanWisePackingEntryPage()))));
     return items;
   }
+
   List<_MenuItem> _getWorkStudyItems() {
     final items = <_MenuItem>[];
     if (widget.assignedMenuIds.contains(40))

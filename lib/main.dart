@@ -12,6 +12,8 @@ import 'pages/sos_page.dart';
 import 'pages/production_entry_page.dart';
 import 'pages/Plan no wise production entry page.dart';
 import 'pages/user_log.dart';
+import 'pages/packing_production_entry_page.dart';
+import 'pages/plan_wise_packing_entry_page.dart';
 
 void main() {
   runApp(const TrackAllApp());

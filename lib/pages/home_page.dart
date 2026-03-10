@@ -10,6 +10,7 @@ import 'ctl_npt_entry_page.dart';
 import 'qc_entry_page.dart';
 import 'production_entry_page.dart';
 import './Plan no wise production entry page.dart';
+import 'packing_production_entry_page.dart';
 import 'kanban_board_page.dart';
 import 'sos_page.dart';
 
@@ -31,6 +32,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   List<int> assignedMenuIds = [];
   bool isDarkMode = false;
 
+  // ── Quick Actions "See More" collapse / expand ───────────────────
+  static const int _qaPreviewCount = 6; // cards shown before "See More"
+  bool _qaExpanded = false;
+
   final List<_QuickAction> allActions = [
     _QuickAction(
       label: "Production Entry",
@@ -45,6 +50,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       color: const Color(0xFF0EA5E9),
       menuId: 205,
       onTap: () => PlanNoWiseProductionEntryPage(),
+    ),
+    // ── Packing Entry — placed before QC Entry ───────────────────
+    _QuickAction(
+      label: "Packing Entry",
+      icon: Icons.inventory_2_rounded,
+      color: const Color(0xFF06B6D4),
+      menuId: 230,                        // update to match backend menuId
+      onTap: () => PackingProductionEntryPage(),
     ),
     _QuickAction(
       label: "QC Entry",
@@ -415,9 +428,37 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Widget _buildQuickActions(bool isMobile, List<_QuickAction> actions) {
+    final previewActions = actions.length <= _qaPreviewCount
+        ? actions
+        : actions.sublist(0, _qaPreviewCount);
+    final overflowActions = actions.length <= _qaPreviewCount
+        ? <_QuickAction>[]
+        : actions.sublist(_qaPreviewCount);
+    final hasMore = overflowActions.isNotEmpty;
+
+    Widget _grid(List<_QuickAction> items) => GridView.count(
+          crossAxisCount: isMobile ? 2 : 3,
+          mainAxisSpacing: 8,
+          crossAxisSpacing: 8,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: EdgeInsets.zero,
+          childAspectRatio: isMobile ? 2.8 : 2.8,
+          children: items.map((action) {
+            if (action.label == "Settings") {
+              return _buildSettingsCard(isMobile, action);
+            } else if (action.label == "Help") {
+              return _buildHelpCard(isMobile, action);
+            } else {
+              return _buildActionCard(isMobile, action);
+            }
+          }).toList(),
+        );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // ── Header ───────────────────────────────────────────────
         Row(
           children: [
             Container(
@@ -443,24 +484,67 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           ],
         ),
         const SizedBox(height: 8),
-        GridView.count(
-          crossAxisCount: isMobile ? 2 : 3,
-          mainAxisSpacing: 8,
-          crossAxisSpacing: 8,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          padding: EdgeInsets.zero,
-          childAspectRatio: isMobile ? 2.8 : 2.8,
-          children: actions.map((action) {
-            if (action.label == "Settings") {
-              return _buildSettingsCard(isMobile, action);
-            } else if (action.label == "Help") {
-              return _buildHelpCard(isMobile, action);
-            } else {
-              return _buildActionCard(isMobile, action);
-            }
-          }).toList(),
-        ),
+
+        // ── Always-visible first N cards ─────────────────────────
+        _grid(previewActions),
+
+        // ── Expandable overflow cards ─────────────────────────────
+        if (hasMore) ...[
+          AnimatedCrossFade(
+            duration: const Duration(milliseconds: 280),
+            crossFadeState: _qaExpanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            firstChild: const SizedBox.shrink(),
+            secondChild: Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: _grid(overflowActions),
+            ),
+          ),
+          const SizedBox(height: 6),
+
+          // ── See More / See Less button ────────────────────────
+          Center(
+            child: GestureDetector(
+              onTap: () => setState(() => _qaExpanded = !_qaExpanded),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF8B5CF6).withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                      color: const Color(0xFF8B5CF6).withOpacity(0.25)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _qaExpanded
+                          ? "See Less"
+                          : "See More (${overflowActions.length})",
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF8B5CF6),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    AnimatedRotation(
+                      turns: _qaExpanded ? 0.5 : 0,
+                      duration: const Duration(milliseconds: 280),
+                      child: const Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        size: 15,
+                        color: Color(0xFF8B5CF6),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }
