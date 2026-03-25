@@ -1,8 +1,8 @@
 # Privacy Policy for TrackAll
 
-**Effective Date:** [02/03/2026]
+**Effective Date:** 25/03/2026
 
-We respects your privacy. This Privacy Policy explains how the TrackAll mobile application ("the App") collects, uses, and protects user information.
+TrackAll respects your privacy. This Privacy Policy explains how the TrackAll mobile application ("the App") collects, uses, and protects user information.
 
 By using TrackAll, you agree to the terms of this Privacy Policy.
 
@@ -26,6 +26,11 @@ The app may store data locally using secure device storage (e.g., preferences or
 ### c. Internet Access
 
 TrackAll may use internet connectivity to communicate with secure company servers or APIs for app functionality.
+
+### d. Notifications
+
+The app uses local notifications to remind users about tasks, updates, and scheduled activities (such as production updates, Kanban reminders, and incentive tracking).
+These notifications are generated locally on the device and do not involve collecting or sharing personal data with external services.
 
 ---
 
@@ -88,7 +93,7 @@ We do not knowingly collect data from children.
 
 Users can:
 
-* Revoke camera permissions anytime from device settings
+* Revoke camera and notification permissions anytime from device settings
 * Clear app storage manually
 * Uninstall the app to remove all local data
 
@@ -107,8 +112,8 @@ Continued use of the app after changes implies acceptance.
 
 If you have questions about this Privacy Policy, contact:
 
-**Developer:** Pran RFl Group MIS
-**Email:** mis55@mis.prangroup.com
+**Developer:** Pran RFL Group MIS
+**Email:** [mis55@mis.prangroup.com](mailto:mis55@mis.prangroup.com)
 
 ---
 
@@ -116,7 +121,7 @@ If you have questions about this Privacy Policy, contact:
 
 * No personal data collection
 * No third-party tracking
-* Uses camera and storage only for app functionality
+* Uses camera, storage, and notifications only for app functionality
 * No account system
 * No data selling or advertising tracking
 
