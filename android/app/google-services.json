@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "424778009303",
+    "project_id": "trackall-fb3ce",
+    "storage_bucket": "trackall-fb3ce.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:424778009303:android:839220730d5cd6b784be92",
+        "android_client_info": {
+          "package_name": "com.pranrflmis.trackall"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA5tebQqJeL40LGf9Uu1iFrSHQbvZ3F5FI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

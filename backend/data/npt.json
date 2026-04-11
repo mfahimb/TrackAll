@@ -1,0 +1,18 @@
+[
+  {
+    "id": 1765014128407,
+    "buildingSection": "B",
+    "operationCategory": "Sew",
+    "lineNo": "L2",
+    "machineNo": "M2",
+    "smv": "2",
+    "downtimeCause": "Thread Break",
+    "startTime": "3:41 PM",
+    "endTime": "5:43 PM",
+    "totalMinutes": "122",
+    "numOperators": "",
+    "responsibleDept": "Dept B",
+    "responsibleUser": "123",
+    "remarks": ""
+  }
+]
