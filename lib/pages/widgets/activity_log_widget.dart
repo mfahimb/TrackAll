@@ -135,20 +135,28 @@ const List<LogCard> _allLogCards = [
       ColDef("PDQC_CREATED_AT", "Time",       minWidth: 82, isDateTime: true),
     ],
   ),
-  LogCard(
+ LogCard(
     title: "Downtime Entry",
     icon: Icons.timer_rounded,
     color: Color(0xFFF59E0B),
     menuId: 40,
     qryType: "NPT_REPORT",
     columns: [
-      ColDef("LCH_NAME",       "Building",   minWidth: 110),
-      ColDef("PROCESS_NAME",   "Process",    minWidth: 120),
-      ColDef("LINE_NO",        "Line",       minWidth: 90),
-      ColDef("DOWNTIME_CAUSE", "Cause",      minWidth: 150),
-      ColDef("TOTA_MINUTE",    "Min",        minWidth: 65),
-      ColDef("CREATED_USER",   "Created By", minWidth: 120),
-    ],
+  ColDef("LCH_NAME",            "Building",           minWidth: 110),
+  ColDef("PROCESS_NAME",        "Process",            minWidth: 110),
+  ColDef("OPERATION_CATAGORY",  "Operation Category", minWidth: 150),
+  ColDef("LINE_NO",             "Line No",            minWidth: 90),
+  ColDef("DW_SMV",              "SMV",                minWidth: 70),
+  ColDef("DOWNTIME_CAUSE",      "Downtime Cause",     minWidth: 160),
+  ColDef("START_TIME",          "Start Time",         minWidth: 90, isDateTime: true),
+  ColDef("END_TIME",            "End Time",           minWidth: 90, isDateTime: true),
+  ColDef("TOTA_MINUTE",         "Total Minutes",      minWidth: 100),
+  ColDef("DW_NFO",              "No of Opr/Mold",     minWidth: 110),
+  ColDef("RESPONSIBLE",         "Responsible",        minWidth: 120),
+  ColDef("ATTEND_HOUR",         "Attend Hour",        minWidth: 100),
+  ColDef("CREATED_USER",        "Created User",       minWidth: 130),
+  ColDef("CREATED_BY",          "Created By ID",      minWidth: 100),
+],
   ),
   LogCard(
     title: "CTL Downtime",
@@ -157,13 +165,23 @@ const List<LogCard> _allLogCards = [
     menuId: 165,
     qryType: "NPT_REPORT",
     columns: [
-      ColDef("LCH_NAME",       "Building",   minWidth: 110),
-      ColDef("PROCESS_NAME",   "Process",    minWidth: 120),
-      ColDef("LINE_NO",        "Line",       minWidth: 90),
-      ColDef("DOWNTIME_CAUSE", "Cause",      minWidth: 150),
-      ColDef("TOTA_MINUTE",    "Min",        minWidth: 65),
-      ColDef("CREATED_USER",   "Created By", minWidth: 120),
-    ],
+  ColDef("LCH_NAME",            "Building",           minWidth: 110),
+  ColDef("PROCESS_NAME",        "Process",            minWidth: 110),
+  ColDef("OPERATION_CATAGORY",  "Operation Category", minWidth: 150),
+  ColDef("LINE_NO",             "Line No",            minWidth: 90),
+  ColDef("DW_SMV",              "SMV",                minWidth: 70),
+  ColDef("DOWNTIME_CAUSE",      "Downtime Cause",     minWidth: 160),
+  ColDef("START_TIME",          "Start Time",         minWidth: 90, isDateTime: true),
+  ColDef("END_TIME",            "End Time",           minWidth: 90, isDateTime: true),
+  ColDef("TOTA_MINUTE",         "Total Minutes",      minWidth: 100),
+  ColDef("DW_NFO",              "No of Opr/Mold",     minWidth: 110),
+  ColDef("RESPONSIBLE",         "Responsible",        minWidth: 120),
+  ColDef("ATTEND_HOUR",         "Attend Hour",        minWidth: 100),
+  ColDef("CREATED_USER",        "Created User",       minWidth: 130),
+  ColDef("CREATED_BY",          "Created By ID",      minWidth: 100),
+  ColDef("DW_GMT_LOSS_QTY",     "GMT Loss Qty",       minWidth: 110),
+
+],
   ),
   LogCard(
     title: "Kanban Status",
@@ -287,6 +305,11 @@ class ActivityLogService {
         });
         if (hasReal) result.add(row);
       }
+
+      if (result.isNotEmpty) {
+  debugPrint("🔑 [$qryType] ALL KEYS: ${result.first.keys.toList()}");
+  debugPrint("🔑 [$qryType] SAMPLE ROW: ${result.first}");
+}
 
       debugPrint("✅ [$qryType] ${result.length} rows loaded");
 

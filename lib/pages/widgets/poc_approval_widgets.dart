@@ -127,7 +127,8 @@ class SearchableDropdownSheet<T> extends StatefulWidget {
 
 class _SearchableDropdownSheetState<T>
     extends State<SearchableDropdownSheet<T>> {
-  final _ctrl = TextEditingController();
+  final _ctrl      = TextEditingController();
+  final _focusNode = FocusNode(); // ✅ explicit focus node
   List<T> _filtered = [];
 
   @override
@@ -147,7 +148,11 @@ class _SearchableDropdownSheetState<T>
   }
 
   @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
+  void dispose() {
+    _ctrl.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -207,7 +212,9 @@ class _SearchableDropdownSheetState<T>
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
           child: TextField(
-            controller: _ctrl, autofocus: true,
+            controller: _ctrl,
+            focusNode:  _focusNode,
+            autofocus:  false, // ✅ keyboard only opens when user taps the field
             style: const TextStyle(fontSize: 12, color: kTextPri,
                 fontWeight: FontWeight.w500),
             decoration: InputDecoration(
@@ -216,8 +223,13 @@ class _SearchableDropdownSheetState<T>
               prefixIcon: const Icon(Icons.search_rounded, size: 14, color: kTextHint),
               prefixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 0),
               suffixIcon: _ctrl.text.isNotEmpty
-                  ? GestureDetector(onTap: () => _ctrl.clear(),
-                      child: const Icon(Icons.close_rounded, size: 13, color: kTextHint))
+                  ? GestureDetector(
+                      onTap: () {
+                        _ctrl.clear();
+                        _focusNode.unfocus(); // ✅ dismiss keyboard on clear
+                      },
+                      child: const Icon(Icons.close_rounded,
+                          size: 13, color: kTextHint))
                   : null,
               suffixIconConstraints: const BoxConstraints(minWidth: 30, minHeight: 0),
               filled: true, fillColor: kPageBg,

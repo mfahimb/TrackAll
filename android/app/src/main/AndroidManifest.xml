@@ -12,13 +12,11 @@
     <!-- ── Notifications (Android 13+) ───────────────────────────────── -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <!-- ── Exact alarm scheduling (Android 12+) ──────────────────────── -->
-   
+    <!-- ── Vibration for notifications ──────────────────────────────── -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <!-- ── Reschedule after device reboot ────────────────────────────── -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
     <application
         android:label="TrackAll"
@@ -45,8 +43,28 @@
             </intent-filter>
         </activity>
 
+        <!-- ── FCM: receives push notifications when app is background/killed -->
+        <service
+            android:name="com.google.firebase.messaging.FirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
+        <!-- ── FCM: default notification channel (Android 8+) ────────── -->
+        <!-- Must match the channel_id your backend sends in the payload   -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="poc_approval_channel" />
+
+        <!-- ── FCM: default notification icon ───────────────────────── -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@mipmap/ic_launcher" />
+
         <!-- ── Scheduled notification receiver ───────────────────────── -->
-        <!-- Fires the notification at the scheduled time                  -->
+        <!-- Fires the local notification at the scheduled time            -->
         <receiver
             android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"
             android:exported="false" />
@@ -57,11 +75,8 @@
             android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"
             android:exported="false">
             <intent-filter>
-                <!-- Standard boot complete -->
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <!-- Fires when the app itself is updated -->
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
-                <!-- Covers locked-boot state on newer Android versions -->
                 <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
             </intent-filter>
         </receiver>

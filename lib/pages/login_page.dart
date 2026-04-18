@@ -12,17 +12,17 @@ const _accentGlow = Color(0xFF60A5FA);
 const _cyan       = Color(0xFF06B6D4);
 const _navy       = Color(0xFF0F172A);
 
-const _bgTop      = Color(0xFFEFF6FF);
-const _bgBottom   = Color(0xFFF8FAFC);
-const _cardBg     = Colors.white;
-const _borderL    = Color(0xFFBFDBFE);
-const _textPri    = Color(0xFF0F172A);
-const _textSec    = Color(0xFF64748B);
-const _inputBg    = Color(0xFFF1F5F9);
+const _bgTop   = Color(0xFFEFF6FF);
+const _bgBottom = Color(0xFFF8FAFC);
+const _borderL = Color(0xFFBFDBFE);
+const _textPri = Color(0xFF0F172A);
+const _textSec = Color(0xFF64748B);
+const _inputBg = Color(0xFFF1F5F9);
 
-// ── Session TTLs ──────────────────────────────────────
-const _rememberMeTtlMs   = 30 * 24 * 3600 * 1000; // 30 days
-const _normalSessionTtlMs =  8 * 3600 * 1000;      // 8 hours
+// ── Session TTL ───────────────────────────────────────
+// Remember-me: UNLIMITED — only expires on explicit logout
+// Normal session: 8 hours
+const _normalSessionTtlMs = 8 * 3600 * 1000;
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -35,8 +35,8 @@ class _LoginPageState extends State<LoginPage>
     with SingleTickerProviderStateMixin {
   final usernameController = TextEditingController();
   final passwordController = TextEditingController();
-  bool loading      = false;
-  bool rememberMe   = false;
+  bool loading         = false;
+  bool rememberMe      = false;
   bool obscurePassword = true;
 
   final _userFocus = FocusNode();
@@ -76,7 +76,6 @@ class _LoginPageState extends State<LoginPage>
   Future<void> _loadSavedCredentialsThenCheckSession() async {
     final prefs = await SharedPreferences.getInstance();
 
-    // ── 1. Always restore remember-me flag and pre-fill fields FIRST ──
     final savedRememberMe = prefs.getBool('remember_me') ?? false;
     final savedUser       = prefs.getString('remembered_user') ?? '';
     final savedPass       = prefs.getString('remembered_pass') ?? '';
@@ -86,8 +85,6 @@ class _LoginPageState extends State<LoginPage>
     debugPrint("🔑 userId in prefs : ${prefs.getString('userId')}");
     debugPrint("🔑 loginTime       : ${prefs.getInt('loginTime')}");
 
-    // Pre-fill fields regardless of session validity so user
-    // always sees their saved credentials if remember-me was on.
     if (mounted) {
       setState(() {
         rememberMe = savedRememberMe;
@@ -98,32 +95,42 @@ class _LoginPageState extends State<LoginPage>
       });
     }
 
-    // ── 2. Check session validity ──────────────────────────────────
     final userId    = prefs.getString('userId');
     final loginTime = prefs.getInt('loginTime');
 
     if (userId == null || userId.isEmpty || loginTime == null) {
-      debugPrint("ℹ️ No active session found — staying on login page");
+      debugPrint("ℹ️ No active session — staying on login page");
       return;
     }
 
-    final now     = DateTime.now().millisecondsSinceEpoch;
-    final elapsed = now - loginTime;
-    // Use the TTL that matches the remember-me setting saved at login time
-    final ttl     = (prefs.getBool('session_remember_me') ?? false)
-        ? _rememberMeTtlMs
-        : _normalSessionTtlMs;
+    final sessionRememberMe = prefs.getBool('session_remember_me') ?? false;
 
-    debugPrint("🕐 Session elapsed : ${elapsed ~/ 1000}s  TTL: ${ttl ~/ 1000}s");
+    // ✅ Remember-me = UNLIMITED (never expires until logout)
+    // Normal session = expires after 8 hours
+    bool sessionValid;
+    if (sessionRememberMe) {
+      sessionValid = true;
+      debugPrint("✅ Remember-me session — unlimited, always valid");
+    } else {
+      final elapsed = DateTime.now().millisecondsSinceEpoch - loginTime;
+      sessionValid  = elapsed < _normalSessionTtlMs;
+      debugPrint("🕐 Normal session elapsed: ${elapsed ~/ 1000}s");
+    }
 
-    if (elapsed < ttl) {
-      debugPrint("✅ Session still valid → navigating to company select");
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, '/company_select');
+    if (sessionValid) {
+      // ✅ Remember-me + company already selected → skip company select
+      final selectedCompany = prefs.getString('selected_company_id');
+      if (sessionRememberMe &&
+          selectedCompany != null &&
+          selectedCompany.isNotEmpty) {
+        debugPrint("✅ Company already selected → /home");
+        if (mounted) Navigator.pushReplacementNamed(context, '/home');
+      } else {
+        debugPrint("✅ Session valid → /company_select");
+        if (mounted) Navigator.pushReplacementNamed(context, '/company_select');
       }
     } else {
-      debugPrint("⏰ Session expired → clearing session, keeping credentials");
-      // Only remove session keys — keep remembered credentials
+      debugPrint("⏰ Session expired → clearing");
       await prefs.remove('userId');
       await prefs.remove('loginTime');
       await prefs.remove('session_remember_me');
@@ -164,11 +171,15 @@ class _LoginPageState extends State<LoginPage>
           final staffCode = _extractStaffCode(success, username);
 
           // ── Persist session ──────────────────────────────────────
-          await prefs.setString('userId',    username);
-          await prefs.setString('staffCode', staffCode);
-          await prefs.setInt('loginTime',    now);
-          // Save which TTL to use when validating this session later
+          await prefs.setString('userId',            username);
+          await prefs.setString('staffCode',         staffCode);
+          await prefs.setInt('loginTime',             now);
           await prefs.setBool('session_remember_me', rememberMe);
+
+          // ✅ Always clear previously selected company on fresh login
+          // so user always picks company after logging in
+          await prefs.remove('selected_company_id');
+          await prefs.remove('selected_company_label');
 
           await _saveFcmToken(username);
 
@@ -178,8 +189,8 @@ class _LoginPageState extends State<LoginPage>
           if (rememberMe) {
             await prefs.setString('remembered_user', username);
             await prefs.setString('remembered_pass', password);
-            await prefs.setBool('remember_me', true);
-            debugPrint("💾 Credentials saved for 30-day session");
+            await prefs.setBool('remember_me',        true);
+            debugPrint("💾 Credentials saved — unlimited session");
           } else {
             await prefs.remove('remembered_user');
             await prefs.remove('remembered_pass');
@@ -188,6 +199,7 @@ class _LoginPageState extends State<LoginPage>
           }
 
           if (mounted) {
+            // Always go to company select on fresh login
             Navigator.pushReplacementNamed(context, '/company_select');
           }
         } else {
@@ -203,58 +215,66 @@ class _LoginPageState extends State<LoginPage>
     if (mounted) setState(() => loading = false);
   }
 
+  // ================================================================
+  // FCM TOKEN
+  // ================================================================
   Future<void> _saveFcmToken(String userId) async {
   try {
     final token = await FirebaseMessaging.instance.getToken();
-    if (token == null) return;
+    if (token == null) {
+      debugPrint("⚠️ FCM token is null — skipping");
+      return;
+    }
 
     debugPrint("📱 FCM Token: $token");
 
+    // ✅ URL format matches what backend gave you:
+    // /FCM_TOKENS?P_APP_USER=...&P_FCM_TOKEN=...&P_PLATFORM=...
     final uri = Uri.parse(
-      'https://ego.rflgroupbd.com:8077/ords/rpro/xxtrac_al/save_fcm_token'
-    );
+      'https://ego.rflgroupbd.com:8077/ords/rpro/xxtrac_al/FCM_TOKENS',
+    ).replace(queryParameters: {
+      'P_APP_USER':  userId,
+      'P_FCM_TOKEN': token,
+      'P_PLATFORM':  'android',
+    });
 
-    await http.post(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'P_USER_ID': userId,
-        'P_FCM_TOKEN': token,
-        'P_DEVICE_OS': 'android',
-      }),
-    );
+    final response = await http.post(uri);
 
-    debugPrint("✅ FCM token saved to backend");
+    if (response.statusCode == 200) {
+      debugPrint("✅ FCM token saved: ${response.body}");
+    } else {
+      debugPrint("⚠️ FCM token save failed: ${response.statusCode} ${response.reasonPhrase}");
+    }
   } catch (e) {
-    debugPrint("⚠️ FCM token save failed: $e");
+    debugPrint("⚠️ FCM token save error: $e");
   }
 }
 
+  // ================================================================
+  // HELPERS
+  // ================================================================
   String _extractStaffCode(dynamic success, String fallback) {
-  if (success == null) return fallback;
+    if (success == null) return fallback;
 
-  if (success is Map) {
-    final candidates = [
-      'STAFF_CODE', 'STAFF_ID', 'EMP_CODE', 'EMP_ID',
-      'USER_CODE',  'APP_USER', 'CREATED_BY', 'LOGIN_ID',
-      'STAFF_NO',   'USER_ID',  'USER_NAME',
-    ];
-    for (final key in candidates) {
-      final val = success[key]?.toString().trim() ?? '';
-      if (val.isNotEmpty) return val;
+    if (success is Map) {
+      final candidates = [
+        'STAFF_CODE', 'STAFF_ID', 'EMP_CODE', 'EMP_ID',
+        'USER_CODE',  'APP_USER', 'CREATED_BY', 'LOGIN_ID',
+        'STAFF_NO',   'USER_ID',  'USER_NAME',
+      ];
+      for (final key in candidates) {
+        final val = success[key]?.toString().trim() ?? '';
+        if (val.isNotEmpty) return val;
+      }
+      return fallback;
     }
-    // Nothing matched — use fallback (the username they typed)
+
+    if (success is List && success.isNotEmpty) {
+      return _extractStaffCode(success.first, fallback);
+    }
+
     return fallback;
   }
-
-  if (success is List && success.isNotEmpty) {
-    return _extractStaffCode(success.first, fallback);
-  }
-
-  // ❌ Was returning success.toString() which gave "Login Success"
-  // ✅ Now always falls back to username
-  return fallback;
-}
 
   void showMessage(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -307,7 +327,10 @@ class _LoginPageState extends State<LoginPage>
                   stops: const [0.0, 1.0],
                 ),
                 boxShadow: [
-                  BoxShadow(color: _accent.withOpacity(0.20), blurRadius: 40, spreadRadius: 10),
+                  BoxShadow(
+                      color:        _accent.withOpacity(0.20),
+                      blurRadius:   40,
+                      spreadRadius: 10),
                 ],
               ),
             ),
@@ -328,7 +351,10 @@ class _LoginPageState extends State<LoginPage>
                   stops: const [0.0, 1.0],
                 ),
                 boxShadow: [
-                  BoxShadow(color: _cyan.withOpacity(0.18), blurRadius: 40, spreadRadius: 10),
+                  BoxShadow(
+                      color:        _cyan.withOpacity(0.18),
+                      blurRadius:   40,
+                      spreadRadius: 10),
                 ],
               ),
             ),
@@ -359,11 +385,18 @@ class _LoginPageState extends State<LoginPage>
                               ),
                               borderRadius: BorderRadius.circular(18),
                               boxShadow: [
-                                BoxShadow(color: _accent.withOpacity(0.28), blurRadius: 22, offset: const Offset(0, 8)),
-                                BoxShadow(color: _cyan.withOpacity(0.12),   blurRadius: 40, offset: const Offset(0, 14)),
+                                BoxShadow(
+                                    color:      _accent.withOpacity(0.28),
+                                    blurRadius: 22,
+                                    offset:     const Offset(0, 8)),
+                                BoxShadow(
+                                    color:      _cyan.withOpacity(0.12),
+                                    blurRadius: 40,
+                                    offset:     const Offset(0, 14)),
                               ],
                             ),
-                            child: const Icon(Icons.track_changes_rounded, color: Colors.white, size: 36),
+                            child: const Icon(Icons.track_changes_rounded,
+                                color: Colors.white, size: 36),
                           ),
                           const SizedBox(height: 16),
                           RichText(
@@ -371,11 +404,19 @@ class _LoginPageState extends State<LoginPage>
                               children: [
                                 TextSpan(
                                   text: "Track",
-                                  style: TextStyle(color: _textPri, fontSize: 40, fontWeight: FontWeight.w800, letterSpacing: -0.5),
+                                  style: TextStyle(
+                                      color:         _textPri,
+                                      fontSize:      40,
+                                      fontWeight:    FontWeight.w800,
+                                      letterSpacing: -0.5),
                                 ),
                                 TextSpan(
                                   text: "All",
-                                  style: TextStyle(color: _accent, fontSize: 40, fontWeight: FontWeight.w800, letterSpacing: -0.5),
+                                  style: TextStyle(
+                                      color:         _accent,
+                                      fontSize:      40,
+                                      fontWeight:    FontWeight.w800,
+                                      letterSpacing: -0.5),
                                 ),
                               ],
                             ),
@@ -383,7 +424,11 @@ class _LoginPageState extends State<LoginPage>
                           const SizedBox(height: 6),
                           const Text(
                             "SMART TRACKING.  BETTER SOLUTION.",
-                            style: TextStyle(color: _textSec, fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 2.5),
+                            style: TextStyle(
+                                color:         _textSec,
+                                fontSize:      10,
+                                fontWeight:    FontWeight.w600,
+                                letterSpacing: 2.5),
                           ),
                         ],
                       ),
@@ -396,15 +441,24 @@ class _LoginPageState extends State<LoginPage>
                       ClipRRect(
                         borderRadius: BorderRadius.circular(28),
                         child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                          filter:
+                              ImageFilter.blur(sigmaX: 16, sigmaY: 16),
                           child: Container(
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.82),
                               borderRadius: BorderRadius.circular(28),
-                              border: Border.all(color: _borderL.withOpacity(0.75), width: 1.4),
+                              border: Border.all(
+                                  color: _borderL.withOpacity(0.75),
+                                  width: 1.4),
                               boxShadow: [
-                                BoxShadow(color: _accent.withOpacity(0.11), blurRadius: 48, offset: const Offset(0, 20)),
-                                BoxShadow(color: _cyan.withOpacity(0.07),   blurRadius: 24, offset: const Offset(0, 8)),
+                                BoxShadow(
+                                    color:      _accent.withOpacity(0.11),
+                                    blurRadius: 48,
+                                    offset:     const Offset(0, 20)),
+                                BoxShadow(
+                                    color:      _cyan.withOpacity(0.07),
+                                    blurRadius: 24,
+                                    offset:     const Offset(0, 8)),
                               ],
                             ),
                             child: Column(
@@ -413,33 +467,59 @@ class _LoginPageState extends State<LoginPage>
                                 Container(
                                   height: 4,
                                   decoration: const BoxDecoration(
-                                    gradient: LinearGradient(colors: [_accent, _cyan]),
-                                    borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                                    gradient: LinearGradient(
+                                        colors: [_accent, _cyan]),
+                                    borderRadius: BorderRadius.vertical(
+                                        top: Radius.circular(28)),
                                   ),
                                 ),
 
                                 Padding(
-                                  padding: const EdgeInsets.fromLTRB(24, 22, 24, 26),
+                                  padding: const EdgeInsets.fromLTRB(
+                                      24, 22, 24, 26),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       // Header
                                       Row(children: [
                                         Container(
-                                          padding: const EdgeInsets.all(9),
+                                          padding:
+                                              const EdgeInsets.all(9),
                                           decoration: BoxDecoration(
-                                            gradient: LinearGradient(colors: [_accent.withOpacity(0.12), _cyan.withOpacity(0.08)]),
-                                            borderRadius: BorderRadius.circular(12),
-                                            border: Border.all(color: _accent.withOpacity(0.18)),
+                                            gradient: LinearGradient(
+                                                colors: [
+                                                  _accent.withOpacity(
+                                                      0.12),
+                                                  _cyan.withOpacity(0.08),
+                                                ]),
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                            border: Border.all(
+                                                color: _accent
+                                                    .withOpacity(0.18)),
                                           ),
-                                          child: const Icon(Icons.waving_hand_rounded, color: _accent, size: 17),
+                                          child: const Icon(
+                                              Icons.waving_hand_rounded,
+                                              color: _accent,
+                                              size: 17),
                                         ),
                                         const SizedBox(width: 12),
                                         const Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
-                                            Text("Welcome back!", style: TextStyle(color: _textPri, fontSize: 17, fontWeight: FontWeight.w800, letterSpacing: -0.3)),
-                                            Text("Sign in to continue", style: TextStyle(color: _textSec, fontSize: 11.5)),
+                                            Text("Welcome back!",
+                                                style: TextStyle(
+                                                    color:      _textPri,
+                                                    fontSize:   17,
+                                                    fontWeight:
+                                                        FontWeight.w800,
+                                                    letterSpacing: -0.3)),
+                                            Text("Sign in to continue",
+                                                style: TextStyle(
+                                                    color:    _textSec,
+                                                    fontSize: 11.5)),
                                           ],
                                         ),
                                       ]),
@@ -450,11 +530,12 @@ class _LoginPageState extends State<LoginPage>
                                       Container(
                                         height: 1,
                                         decoration: BoxDecoration(
-                                          gradient: LinearGradient(colors: [
-                                            _borderL.withOpacity(0),
-                                            _borderL.withOpacity(0.9),
-                                            _borderL.withOpacity(0),
-                                          ]),
+                                          gradient: LinearGradient(
+                                              colors: [
+                                                _borderL.withOpacity(0),
+                                                _borderL.withOpacity(0.9),
+                                                _borderL.withOpacity(0),
+                                              ]),
                                         ),
                                       ),
 
@@ -463,77 +544,138 @@ class _LoginPageState extends State<LoginPage>
                                       // Fields
                                       _buildField(
                                         controller: usernameController,
-                                        focusNode: _userFocus,
-                                        icon: Icons.person_outline_rounded,
-                                        hint: "User ID",
+                                        focusNode:  _userFocus,
+                                        icon:  Icons.person_outline_rounded,
+                                        hint:  "User ID",
                                         label: "USER ID",
                                       ),
                                       const SizedBox(height: 14),
                                       _buildField(
                                         controller: passwordController,
-                                        focusNode: _passFocus,
-                                        icon: Icons.lock_outline_rounded,
-                                        hint: "Password",
-                                        label: "PASSWORD",
+                                        focusNode:  _passFocus,
+                                        icon:       Icons.lock_outline_rounded,
+                                        hint:       "Password",
+                                        label:      "PASSWORD",
                                         isPassword: true,
                                       ),
 
                                       const SizedBox(height: 18),
 
-                                      // ── Remember me ─────────────────────────────
+                                      // ── Remember me ──────────────
                                       GestureDetector(
-                                        onTap: () => setState(() => rememberMe = !rememberMe),
+                                        onTap: () => setState(() =>
+                                            rememberMe = !rememberMe),
                                         child: Row(children: [
                                           AnimatedContainer(
-                                            duration: const Duration(milliseconds: 200),
+                                            duration: const Duration(
+                                                milliseconds: 200),
                                             width: 20, height: 20,
                                             decoration: BoxDecoration(
                                               gradient: rememberMe
                                                   ? const LinearGradient(
-                                                      colors: [_accent, _cyan],
-                                                      begin: Alignment.topLeft,
-                                                      end: Alignment.bottomRight,
+                                                      colors: [
+                                                        _accent,
+                                                        _cyan
+                                                      ],
+                                                      begin:
+                                                          Alignment.topLeft,
+                                                      end: Alignment
+                                                          .bottomRight,
                                                     )
                                                   : null,
-                                              color: rememberMe ? null : Colors.transparent,
-                                              borderRadius: BorderRadius.circular(6),
+                                              color: rememberMe
+                                                  ? null
+                                                  : Colors.transparent,
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
                                               border: Border.all(
-                                                color: rememberMe ? _accent : _borderL,
+                                                color: rememberMe
+                                                    ? _accent
+                                                    : _borderL,
                                                 width: 1.6,
                                               ),
                                               boxShadow: rememberMe
-                                                  ? [BoxShadow(color: _accent.withOpacity(0.28), blurRadius: 8, offset: const Offset(0, 2))]
+                                                  ? [
+                                                      BoxShadow(
+                                                          color: _accent
+                                                              .withOpacity(
+                                                                  0.28),
+                                                          blurRadius: 8,
+                                                          offset:
+                                                              const Offset(
+                                                                  0, 2))
+                                                    ]
                                                   : null,
                                             ),
                                             child: rememberMe
-                                                ? const Icon(Icons.check_rounded, size: 13, color: Colors.white)
+                                                ? const Icon(
+                                                    Icons.check_rounded,
+                                                    size:  13,
+                                                    color: Colors.white)
                                                 : null,
                                           ),
                                           const SizedBox(width: 10),
                                           const Text(
                                             "Keep me signed in",
-                                            style: TextStyle(color: _textSec, fontSize: 12.5, fontWeight: FontWeight.w500),
+                                            style: TextStyle(
+                                                color:      _textSec,
+                                                fontSize:   12.5,
+                                                fontWeight:
+                                                    FontWeight.w500),
                                           ),
                                           AnimatedSwitcher(
-                                            duration: const Duration(milliseconds: 200),
+                                            duration: const Duration(
+                                                milliseconds: 200),
                                             child: rememberMe
                                                 ? Padding(
-                                                    key: const ValueKey('badge'),
-                                                    padding: const EdgeInsets.only(left: 8),
+                                                    key: const ValueKey(
+                                                        'badge'),
+                                                    padding:
+                                                        const EdgeInsets
+                                                            .only(left: 8),
                                                     child: Container(
-                                                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                                                      decoration: BoxDecoration(
-                                                        gradient: LinearGradient(colors: [_accent.withOpacity(0.12), _cyan.withOpacity(0.10)]),
-                                                        borderRadius: BorderRadius.circular(20),
-                                                        border: Border.all(color: _accent.withOpacity(0.25)),
+                                                      padding: const EdgeInsets
+                                                          .symmetric(
+                                                          horizontal: 7,
+                                                          vertical: 2),
+                                                      decoration:
+                                                          BoxDecoration(
+                                                        gradient:
+                                                            LinearGradient(
+                                                                colors: [
+                                                              _accent
+                                                                  .withOpacity(
+                                                                      0.12),
+                                                              _cyan
+                                                                  .withOpacity(
+                                                                      0.10),
+                                                            ]),
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(
+                                                                    20),
+                                                        border: Border.all(
+                                                            color: _accent
+                                                                .withOpacity(
+                                                                    0.25)),
                                                       ),
+                                                      // ✅ Until logout
                                                       child: const Text(
-                                                        "30 days",
-                                                        style: TextStyle(color: _accent, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.3),
+                                                        "Until logout",
+                                                        style: TextStyle(
+                                                            color: _accent,
+                                                            fontSize: 10,
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .w700,
+                                                            letterSpacing:
+                                                                0.3),
                                                       ),
                                                     ),
                                                   )
-                                                : const SizedBox.shrink(key: ValueKey('empty')),
+                                                : const SizedBox.shrink(
+                                                    key:
+                                                        ValueKey('empty')),
                                           ),
                                         ]),
                                       ),
@@ -542,47 +684,105 @@ class _LoginPageState extends State<LoginPage>
 
                                       // Login button
                                       loading
-                                          ? const Center(child: LoadingIndicator())
+                                          ? const Center(
+                                              child: LoadingIndicator())
                                           : GestureDetector(
                                               onTap: login,
                                               child: Container(
-                                                width: double.infinity,
+                                                width:  double.infinity,
                                                 height: 52,
                                                 decoration: BoxDecoration(
-                                                  borderRadius: BorderRadius.circular(14),
-                                                  gradient: const LinearGradient(
-                                                    colors: [_accent, Color(0xFF1D4ED8)],
-                                                    begin: Alignment.centerLeft,
-                                                    end: Alignment.centerRight,
+                                                  borderRadius:
+                                                      BorderRadius
+                                                          .circular(14),
+                                                  gradient:
+                                                      const LinearGradient(
+                                                    colors: [
+                                                      _accent,
+                                                      Color(0xFF1D4ED8),
+                                                    ],
+                                                    begin: Alignment
+                                                        .centerLeft,
+                                                    end: Alignment
+                                                        .centerRight,
                                                   ),
                                                   boxShadow: [
-                                                    BoxShadow(color: _accent.withOpacity(0.35), blurRadius: 18, offset: const Offset(0, 6)),
-                                                    BoxShadow(color: _cyan.withOpacity(0.15),   blurRadius: 28, offset: const Offset(0, 10)),
+                                                    BoxShadow(
+                                                        color: _accent
+                                                            .withOpacity(
+                                                                0.35),
+                                                        blurRadius: 18,
+                                                        offset:
+                                                            const Offset(
+                                                                0, 6)),
+                                                    BoxShadow(
+                                                        color: _cyan
+                                                            .withOpacity(
+                                                                0.15),
+                                                        blurRadius: 28,
+                                                        offset:
+                                                            const Offset(
+                                                                0, 10)),
                                                   ],
                                                 ),
                                                 child: Stack(
-                                                  alignment: Alignment.center,
+                                                  alignment:
+                                                      Alignment.center,
                                                   children: [
                                                     Positioned(
-                                                      top: 0, left: 0, right: 0,
+                                                      top:   0,
+                                                      left:  0,
+                                                      right: 0,
                                                       child: Container(
                                                         height: 26,
-                                                        decoration: BoxDecoration(
-                                                          borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
-                                                          gradient: LinearGradient(
-                                                            colors: [Colors.white.withOpacity(0.14), Colors.white.withOpacity(0)],
-                                                            begin: Alignment.topCenter,
-                                                            end: Alignment.bottomCenter,
+                                                        decoration:
+                                                            BoxDecoration(
+                                                          borderRadius:
+                                                              const BorderRadius
+                                                                  .vertical(
+                                                                  top: Radius
+                                                                      .circular(
+                                                                          14)),
+                                                          gradient:
+                                                              LinearGradient(
+                                                            colors: [
+                                                              Colors.white
+                                                                  .withOpacity(
+                                                                      0.14),
+                                                              Colors.white
+                                                                  .withOpacity(
+                                                                      0),
+                                                            ],
+                                                            begin: Alignment
+                                                                .topCenter,
+                                                            end: Alignment
+                                                                .bottomCenter,
                                                           ),
                                                         ),
                                                       ),
                                                     ),
                                                     const Row(
-                                                      mainAxisSize: MainAxisSize.min,
+                                                      mainAxisSize:
+                                                          MainAxisSize.min,
                                                       children: [
-                                                        Text("SIGN IN", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 2.2)),
+                                                        Text("SIGN IN",
+                                                            style: TextStyle(
+                                                                fontSize:
+                                                                    13,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w800,
+                                                                color: Colors
+                                                                    .white,
+                                                                letterSpacing:
+                                                                    2.2)),
                                                         SizedBox(width: 8),
-                                                        Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 16),
+                                                        Icon(
+                                                            Icons
+                                                                .arrow_forward_rounded,
+                                                            color:
+                                                                Colors.white,
+                                                            size: 16),
                                                       ],
                                                     ),
                                                   ],
@@ -601,7 +801,10 @@ class _LoginPageState extends State<LoginPage>
                       const SizedBox(height: 36),
                       const Text(
                         "© MIS-PRAN-RFL Group",
-                        style: TextStyle(color: _textSec, fontSize: 11, fontWeight: FontWeight.w500),
+                        style: TextStyle(
+                            color:      _textSec,
+                            fontSize:   11,
+                            fontWeight: FontWeight.w500),
                       ),
                       const SizedBox(height: 20),
                     ],
@@ -620,10 +823,10 @@ class _LoginPageState extends State<LoginPage>
   // ================================================================
   Widget _buildField({
     required TextEditingController controller,
-    required FocusNode focusNode,
-    required IconData icon,
-    required String hint,
-    required String label,
+    required FocusNode             focusNode,
+    required IconData              icon,
+    required String                hint,
+    required String                label,
     bool isPassword = false,
   }) {
     final focused = focusNode.hasFocus;
@@ -635,9 +838,9 @@ class _LoginPageState extends State<LoginPage>
           child: Text(
             label,
             style: TextStyle(
-              fontSize: 10.5,
-              fontWeight: FontWeight.w700,
-              color: focused ? _accent : _textSec,
+              fontSize:      10.5,
+              fontWeight:    FontWeight.w700,
+              color:         focused ? _accent : _textSec,
               letterSpacing: 0.8,
             ),
           ),
@@ -652,50 +855,67 @@ class _LoginPageState extends State<LoginPage>
               width: focused ? 1.6 : 1.0,
             ),
             boxShadow: focused
-                ? [BoxShadow(color: _accent.withOpacity(0.13), blurRadius: 14, offset: const Offset(0, 4))]
+                ? [
+                    BoxShadow(
+                        color:      _accent.withOpacity(0.13),
+                        blurRadius: 14,
+                        offset:     const Offset(0, 4))
+                  ]
                 : [],
           ),
           child: Row(
             children: [
               Container(
-                margin: const EdgeInsets.all(10),
+                margin:  const EdgeInsets.all(10),
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: focused
                         ? [_accent, _cyan]
-                        : [_borderL.withOpacity(0.55), _borderL.withOpacity(0.30)],
+                        : [
+                            _borderL.withOpacity(0.55),
+                            _borderL.withOpacity(0.30),
+                          ],
                     begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+                    end:   Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(icon, color: focused ? Colors.white : _textSec, size: 15),
+                child: Icon(icon,
+                    color: focused ? Colors.white : _textSec, size: 15),
               ),
               Expanded(
                 child: TextField(
-                  controller: controller,
-                  focusNode: focusNode,
+                  controller:  controller,
+                  focusNode:   focusNode,
                   obscureText: isPassword ? obscurePassword : false,
-                  style: const TextStyle(color: _textPri, fontSize: 14, fontWeight: FontWeight.w500),
+                  style: const TextStyle(
+                      color:      _textPri,
+                      fontSize:   14,
+                      fontWeight: FontWeight.w500),
                   decoration: InputDecoration(
                     hintText: hint,
-                    hintStyle: TextStyle(color: _textSec.withOpacity(0.55), fontSize: 13),
-                    border: InputBorder.none,
-                    isDense: true,
+                    hintStyle: TextStyle(
+                        color:    _textSec.withOpacity(0.55),
+                        fontSize: 13),
+                    border:         InputBorder.none,
+                    isDense:        true,
                     contentPadding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                 ),
               ),
               if (isPassword)
                 GestureDetector(
-                  onTap: () => setState(() => obscurePassword = !obscurePassword),
+                  onTap: () =>
+                      setState(() => obscurePassword = !obscurePassword),
                   child: Padding(
                     padding: const EdgeInsets.only(right: 14),
                     child: Icon(
-                      obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                      obscurePassword
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
                       color: focused ? _accent : _textSec,
-                      size: 18,
+                      size:  18,
                     ),
                   ),
                 ),
@@ -712,7 +932,7 @@ class _GridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFF3B82F6).withOpacity(0.045)
+      ..color       = const Color(0xFF3B82F6).withOpacity(0.045)
       ..strokeWidth = 0.6;
     const step = 28.0;
     for (double x = 0; x < size.width; x += step) {

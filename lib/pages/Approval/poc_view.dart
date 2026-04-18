@@ -16,8 +16,8 @@ const _accent       = Color(0xFF3B82F6);
 const _accentLight  = Color(0xFFEFF6FF);
 const _cyan         = Color(0xFF06B6D4);
 const _textPri      = Color(0xFF0F172A);
-const _textSec  = Color(0xFF475569);
-const _textHint = Color(0xFF6B7280); 
+const _textSec      = Color(0xFF334155); // ✅ darkened from 0xFF475569
+const _textHint     = Color(0xFF4B5563); // ✅ darkened from 0xFF6B7280
 const _success      = Color(0xFF16A34A);
 const _successLight = Color(0xFFF0FDF4);
 const _danger       = Color(0xFFDC2626);
@@ -54,7 +54,7 @@ class _PocViewPageState extends State<PocViewPage> {
   String _appUser = '';
 
   PocInfo?          _info;
-  List<PocCostLine> _lines  = [];
+  List<PocCostLine> _lines   = [];
   bool              _loading = true;
   String?           _error;
 
@@ -72,21 +72,19 @@ class _PocViewPageState extends State<PocViewPage> {
     _init();
   }
 
-  // ✅ FIX: use staffCode (not userId) as P_APP_USER
   Future<void> _init() async {
-  final prefs = await SharedPreferences.getInstance();
-  _appUser = prefs.getString('userId') ?? '';
-  _company = prefs.getString('selected_company_id') ?? '5';
-  
-  // ADD THIS
-  debugPrint('👤 staffCode: $_appUser');
-  debugPrint('🏢 company: $_company');
-  debugPrint('🔑 userId: ${prefs.getString('userId')}');
-  debugPrint('🔑 empCode: ${prefs.getString('empCode')}');
-  debugPrint('🔑 all keys: ${prefs.getKeys()}');
-  
-  await _load();
-}
+    final prefs = await SharedPreferences.getInstance();
+    _appUser = prefs.getString('userId') ?? '';
+    _company = prefs.getString('selected_company_id') ?? '5';
+
+    debugPrint('👤 staffCode: $_appUser');
+    debugPrint('🏢 company: $_company');
+    debugPrint('🔑 userId: ${prefs.getString('userId')}');
+    debugPrint('🔑 empCode: ${prefs.getString('empCode')}');
+    debugPrint('🔑 all keys: ${prefs.getKeys()}');
+
+    await _load();
+  }
 
   Future<void> _load() async {
     if (!mounted) return;
@@ -139,7 +137,7 @@ class _PocViewPageState extends State<PocViewPage> {
     final result = await _svc.submitApproval(
       pchId:   widget.pchId,
       action:  action,
-      appUser: _appUser,   // ✅ now staffCode
+      appUser: _appUser,
       company: _company,
       stage:   widget.stage,
       remarks: remarks,
@@ -385,9 +383,9 @@ class _PocViewPageState extends State<PocViewPage> {
                         letterSpacing: 0.1)),
                 Text(stageLabel,
                     style: const TextStyle(
-                        color: _textSec,
+                        color: _textSec,        // ✅ was _textSec (now darker)
                         fontSize: 11,
-                        fontWeight: FontWeight.w500),
+                        fontWeight: FontWeight.w600), // ✅ bumped from w500
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis),
               ],
@@ -439,12 +437,12 @@ class _PocViewPageState extends State<PocViewPage> {
       _InfoCell(label: 'Costing No',    value: info.pocNo,                                             icon: Icons.tag_rounded),
       _InfoCell(label: 'Date',          value: info.pocDate != null ? fmt.format(info.pocDate!) : '—', icon: Icons.calendar_today_rounded),
       _InfoCell(label: 'Buyer',         value: info.buyerName.isNotEmpty ? info.buyerName : '—',       icon: Icons.storefront_rounded),
-      _InfoCell(label: 'Inquiry No',    value: info.inquiryNo.isNotEmpty ? info.inquiryNo : '—',      icon: Icons.search_rounded),
-      _InfoCell(label: 'Item',          value: info.itemName.isNotEmpty  ? info.itemName  : '—',      icon: Icons.category_rounded),
+      _InfoCell(label: 'Inquiry No',    value: info.inquiryNo.isNotEmpty ? info.inquiryNo : '—',       icon: Icons.search_rounded),
+      _InfoCell(label: 'Item',          value: info.itemName.isNotEmpty  ? info.itemName  : '—',       icon: Icons.category_rounded),
       _InfoCell(label: 'Total Qty',     value: _n(info.qty.toDouble(), 0),                             icon: Icons.inventory_rounded),
       _InfoCell(label: 'Version',       value: 'v${info.version}',                                     icon: Icons.layers_rounded),
       _InfoCell(label: 'Generate Type', value: _formatCalType(info.calType),                           icon: Icons.settings_rounded),
-      _InfoCell(label: 'Currency',      value: info.currency.isNotEmpty  ? info.currency  : '—',      icon: Icons.currency_exchange_rounded),
+      _InfoCell(label: 'Currency',      value: info.currency.isNotEmpty  ? info.currency  : '—',       icon: Icons.currency_exchange_rounded),
       _InfoCell(label: 'Final',         value: info.isFinal ? 'Yes' : 'No',                            icon: Icons.flag_rounded,
                 valueColor: info.isFinal ? _success : _textSec),
       _InfoCell(label: 'Cost Unit',     value: info.costUnit  != 0 ? _n(info.costUnit, 0)                   : '', icon: Icons.straighten_rounded),
@@ -496,10 +494,10 @@ class _PocViewPageState extends State<PocViewPage> {
                 children: [
                   Text(cell.label,
                       style: const TextStyle(
-                          color: _textHint,
-                          fontSize: 9,
+                          color: _textSec,         // ✅ was _textHint (too light at 9px)
+                          fontSize: 10,            // ✅ bumped from 9
                           fontWeight: FontWeight.w600,
-                          letterSpacing: 0.5),
+                          letterSpacing: 0.4),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 2),
@@ -560,10 +558,10 @@ class _PocViewPageState extends State<PocViewPage> {
           children: [
             Text(card.label,
                 style: TextStyle(
-                    color: card.color == _textPri ? _textHint : card.color,
-                    fontSize: 9,
+                    color: card.color == _textPri ? _textSec : card.color, // ✅ was _textHint
+                    fontSize: 10,             // ✅ bumped from 9
                     fontWeight: FontWeight.w700,
-                    letterSpacing: 0.5)),
+                    letterSpacing: 0.4)),
             const SizedBox(height: 4),
             Text(card.value,
                 style: TextStyle(
@@ -651,14 +649,14 @@ class _PocViewPageState extends State<PocViewPage> {
                 Text(category,
                     style: TextStyle(
                         color: catColor,
-                        fontSize: 10,
+                        fontSize: 11,           // ✅ bumped from 10
                         fontWeight: FontWeight.w800,
-                        letterSpacing: 0.4)),
+                        letterSpacing: 0.3)),
                 const Spacer(),
                 Text('Subtotal: ${_cur(subtotal)}',
                     style: TextStyle(
                         color: catColor,
-                        fontSize: 10,
+                        fontSize: 11,           // ✅ bumped from 10
                         fontWeight: FontWeight.w700)),
               ],
             ),
@@ -687,17 +685,20 @@ class _PocViewPageState extends State<PocViewPage> {
           SizedBox(width: 32,
               child: Text('${line.sl}',
                   style: const TextStyle(
-                      color: _textHint, fontSize: 11,
+                      color: _textSec,         // ✅ was _textHint
+                      fontSize: 11,
                       fontWeight: FontWeight.w600))),
           Expanded(flex: 3,
               child: Text(line.category,
                   style: const TextStyle(
-                      color: _textSec, fontSize: 11,
-                      fontWeight: FontWeight.w500))),
+                      color: _textSec,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600))), // ✅ bumped from w500
           Expanded(flex: 4,
               child: Text(line.head,
                   style: const TextStyle(
-                      color: _textPri, fontSize: 11,
+                      color: _textPri,
+                      fontSize: 11,
                       fontWeight: FontWeight.w600))),
           SizedBox(
             width: 60,
@@ -709,7 +710,8 @@ class _PocViewPageState extends State<PocViewPage> {
                     borderRadius: BorderRadius.circular(4)),
                 child: Text(line.sourceType,
                     style: TextStyle(
-                        color: srcColor, fontSize: 9,
+                        color: srcColor,
+                        fontSize: 10,           // ✅ bumped from 9
                         fontWeight: FontWeight.w700),
                     textAlign: TextAlign.center),
               ),
@@ -725,7 +727,8 @@ class _PocViewPageState extends State<PocViewPage> {
               child: Text(
                   '${line.ratePercent.toStringAsFixed(2)}%',
                   style: const TextStyle(
-                      color: _textSec, fontSize: 10,
+                      color: _textSec,         // ✅ now darker
+                      fontSize: 10,
                       fontWeight: FontWeight.w600),
                   textAlign: TextAlign.right)),
         ],

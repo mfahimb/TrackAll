@@ -117,30 +117,31 @@ class _TopMenuBarState extends State<TopMenuBar>
 
   bool get isAdmin => userId?.trim() == "540150";
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
+ @override
+void initState() {
+  super.initState();
 
-    _pulse = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 3),
-    )..repeat(reverse: true);
+  _handleColdStartNotification(); // ✅ correct place
 
-    // ✅ FCM: when a push arrives while app is open (foreground)
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      debugPrint("📨 Foreground FCM: ${message.data}");
-      _pollNotifications(); // refresh counts + show in-app banner
-    });
+  WidgetsBinding.instance.addObserver(this);
 
-    // ✅ FCM: when user taps notification while app is in background
-    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      debugPrint("📨 FCM tapped (background): ${message.data}");
-      _handleFcmNavigation(message.data);
-    });
+  _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 3),
+  )..repeat(reverse: true);
 
-    _loadUserData();
-  }
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    debugPrint("📨 Foreground FCM: ${message.data}");
+    _pollNotifications();
+  });
+
+  FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+    debugPrint("📨 FCM tapped (background): ${message.data}");
+    _handleFcmNavigation(message.data);
+  });
+
+  _loadUserData();
+}
 
   @override
   void dispose() {
@@ -175,6 +176,18 @@ class _TopMenuBarState extends State<TopMenuBar>
       );
     }
   }
+
+   // ✅ ✅ ADD THIS EXACTLY HERE
+  Future<void> _handleColdStartNotification() async {
+    final message = await FirebaseMessaging.instance.getInitialMessage();
+    if (message != null && mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        debugPrint("📨 FCM cold start: ${message.data}");
+        _handleFcmNavigation(message.data);
+      });
+    }
+  }
+
 
   // ── Handle local system notification tap → navigate ───────────────
   void _handleNotificationTap() {
@@ -314,37 +327,30 @@ class _TopMenuBarState extends State<TopMenuBar>
   }
 
   // ── LOGOUT — cancel notifications + remove FCM token ──────────────
-  Future<void> _logout() async {
-    // Cancel all scheduled local notifications
+ Future<void> _logout() async {
     try {
       await NotificationService().cancelAllNotifications();
     } catch (_) {}
 
-    // ✅ Remove FCM token from backend + delete locally
-    // This stops push notifications being sent to this device after logout
-    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
-      try {
-        final token = await FirebaseMessaging.instance.getToken();
-        if (token != null && userId != null) {
-          await http.post(
-            Uri.parse(
-              'https://ego.rflgroupbd.com:8077/ords/rpro/xxtrac_al/remove_fcm_token',
-            ),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'P_USER_ID':   userId,
-              'P_FCM_TOKEN': token,
-            }),
-          );
-          debugPrint("✅ FCM token removed from backend");
-        }
-        // Delete the token locally so a fresh one is generated on next login
-        await FirebaseMessaging.instance.deleteToken();
-        debugPrint("✅ FCM token deleted locally");
-      } catch (e) {
-        debugPrint("⚠️ FCM token removal failed (non-fatal): $e");
-      }
+    // FCM token intentionally kept in DB so user receives
+    // notifications even after logout
+
+    // Clear session but preserve remember-me credentials if set
+   /* final prefs          = await SharedPreferences.getInstance();
+    final rememberMe     = prefs.getBool('remember_me')      ?? false;
+    final rememberedUser = prefs.getString('remembered_user');
+    final rememberedPass = prefs.getString('remembered_pass');
+
+    await prefs.clear();
+
+    if (rememberMe && rememberedUser != null && rememberedPass != null) {
+      await prefs.setBool('remember_me',       true);
+      await prefs.setString('remembered_user', rememberedUser);
+      await prefs.setString('remembered_pass', rememberedPass);
     }
+
+    if (mounted) Navigator.pushReplacementNamed(context, '/login');
+  } */
 
     // Clear session but preserve remember-me credentials if set
     final prefs          = await SharedPreferences.getInstance();
