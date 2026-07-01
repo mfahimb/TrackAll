@@ -276,7 +276,7 @@ class _NptEntryPageState extends State<NptEntryPage> {
     final requiredFields = [
       buildingId, processId, categoryId, lineId, machineNo,
       deptId, responsibleUserId, causeLabel, smv,
-      numberOfOperators, remarks, startTime, endTime,
+      numberOfOperators, startTime, endTime,
     ];
 
     if (requiredFields.any((e) => e == null || (e is String && e.trim().isEmpty))) {
@@ -301,7 +301,7 @@ class _NptEntryPageState extends State<NptEntryPage> {
       machineNo: machineNo!, smv: smv!, categoryId: categoryId!,
       startTime: startTime!, endTime: endTime!, cause: causeLabel!,
       deptId: deptId!, responsibleUserId: responsibleUserId!,
-      remarks: remarks!, gmtLossQty: "0",
+      remarks: remarks?? "", gmtLossQty: "0",
       staffId: loginUserId, numberOfOperators: numberOfOperators!,
     );
 
@@ -446,7 +446,7 @@ class _NptEntryPageState extends State<NptEntryPage> {
                       setState(() { responsibleUserId = id; responsibleUserLabel = label; });
                     }, width),
 
-                    _textField("Remarks *", _remarksController, (v) => setState(() => remarks = v), width * 2 + 12),
+                    _textField("Remarks", _remarksController, (v) => setState(() => remarks = v), width * 2 + 12),
 
                     const SizedBox(height: 12),
 
@@ -682,8 +682,13 @@ class _NptEntryPageState extends State<NptEntryPage> {
     );
   }
 
-  void _searchDialog(BuildContext context, String title,
-      List<Map<String, String>> items, void Function(String, String) onSelect) {
+  void _searchDialog(
+  BuildContext context,
+  String title,
+  List<Map<String, String>> items,
+  void Function(String, String) onSelect, {
+  bool allowManual = false,
+}) {
     List<Map<String, String>> filtered = List.from(items);
     String currentSearch = "";
 
@@ -729,13 +734,18 @@ class _NptEntryPageState extends State<NptEntryPage> {
               const SizedBox(height: 12),
               Expanded(
                 child: ListView(children: [
-                  if (filtered.isEmpty && currentSearch.isNotEmpty)
-                    ListTile(
-                      title: Text("Use manual: $currentSearch",
-                          style: const TextStyle(fontWeight: FontWeight.bold)),
-                      leading: const Icon(Icons.add_circle, color: Colors.blue),
-                      onTap: () { onSelect(currentSearch, currentSearch); Navigator.pop(context); },
-                    ),
+                  if (allowManual &&
+    filtered.isEmpty &&
+    currentSearch.isNotEmpty)
+  ListTile(
+    title: Text("Use manual: $currentSearch",
+        style: const TextStyle(fontWeight: FontWeight.bold)),
+    leading: const Icon(Icons.add_circle, color: Colors.blue),
+    onTap: () {
+      onSelect(currentSearch, currentSearch);
+      Navigator.pop(context);
+    },
+  ),
                   ...filtered.map((item) => ListTile(
                         title: Text(item["label"]!,
                             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),

@@ -29,7 +29,8 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import '../Approval/POC Approval/ie_poc_approval.dart';
 import '../Approval/POC Approval/coaster_poc_approval.dart';
 import '../Approval/POC Approval/fc_poc_approval.dart';
-
+import '../process_smv_set_page.dart';
+import '../Line balancing/line_balancing_scan_page.dart';
 // ─────────────────────────────────────────────
 // DESIGN TOKENS
 // ─────────────────────────────────────────────
@@ -114,6 +115,7 @@ class _TopMenuBarState extends State<TopMenuBar>
 
   // Tracks what counts were last shown to avoid banner/notif spam
   Map<ApprovalStage, int> _lastShownCounts = {};
+  
 
   bool get isAdmin => userId?.trim() == "540150";
 
@@ -179,6 +181,10 @@ void initState() {
 
    // ✅ ✅ ADD THIS EXACTLY HERE
   Future<void> _handleColdStartNotification() async {
+  // Firebase Messaging is not supported on Web
+  if (kIsWeb) return;
+
+  try {
     final message = await FirebaseMessaging.instance.getInitialMessage();
     if (message != null && mounted) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -186,7 +192,10 @@ void initState() {
         _handleFcmNavigation(message.data);
       });
     }
+  } catch (e) {
+    debugPrint("⚠️ Cold start notification error: $e");
   }
+}
 
 
   // ── Handle local system notification tap → navigate ───────────────
@@ -227,6 +236,7 @@ void initState() {
       }
     }
 
+    
     if (mounted) setState(() {});
     await _pollNotifications();
   }
@@ -252,24 +262,29 @@ void initState() {
         hasChanges = true;
         stagesToShow.add(stage);
 
-        // ✅ Fire system notification — only if user has menu access
-        final meta = _pocStageMeta[stage]!;
-        if (assignedMenuIds.contains(meta.menuId)) {
-          try {
-            await NotificationService().showPocApprovalNotification(
-              stage:    meta.label,
-              subtitle: meta.subtitle,
-              count:    current,
-              idOffset: meta.notifIdOffset,
-            );
-          } catch (e) {
-            debugPrint('⚠️ POC system notif failed for ${meta.label}: $e');
+        // Fire system notification only once per new alert cycle
+        if (!_notifSvc.systemNotifsShown) {
+          final meta = _pocStageMeta[stage]!;
+          if (assignedMenuIds.contains(meta.menuId)) {
+            try {
+              await NotificationService().showPocApprovalNotification(
+                stage:    meta.label,
+                subtitle: meta.subtitle,
+                count:    current,
+                idOffset: meta.notifIdOffset,
+              );
+            } catch (e) {
+              debugPrint('⚠️ POC system notif failed for ${meta.label}: $e');
+            }
           }
         }
       }
     }
 
-    if (hasChanges) {
+    if (hasChanges) _notifSvc.markSystemNotifsShown();
+
+    if (hasChanges && !_notifSvc.bannersShown) {
+      _notifSvc.markBannersShown();
       showPocBanners(stagesToShow, rawCounts);
       _lastShownCounts = Map.from(rawCounts);
     }
@@ -406,30 +421,40 @@ void initState() {
             child: Padding(
               padding: EdgeInsets.symmetric(
                   horizontal: MediaQuery.of(context).size.width < 600 ? 8 : 14),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
+             child: Stack(
+                alignment: Alignment.center,
                 children: [
-                  _MenuButton(
-                    onTap:    _openSidebar,
-                    isMobile: MediaQuery.of(context).size.width < 600,
+                  // Left — hamburger
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: _MenuButton(
+                      onTap:    _openSidebar,
+                      isMobile: MediaQuery.of(context).size.width < 600,
+                    ),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
+                  // Center — logo
+                  Center(
                     child: GestureDetector(
                       onTap: () =>
                           Navigator.pushReplacementNamed(context, '/home'),
                       child: const _LogoBadge(),
                     ),
                   ),
-                  if (companyLabel != null) ...[
-                    _CompanyChip(
-                      label:    companyLabel!,
-                      isMobile: MediaQuery.of(context).size.width < 600,
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                  PocBellIcon(
-                    isMobile: MediaQuery.of(context).size.width < 600,
+                  // Right — company + bell
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      if (companyLabel != null) ...[
+                        _CompanyChip(
+                          label:    companyLabel!,
+                          isMobile: MediaQuery.of(context).size.width < 600,
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      PocBellIcon(
+                        isMobile: MediaQuery.of(context).size.width < 600,
+                      ),
+                    ]),
                   ),
                 ],
               ),
@@ -519,53 +544,20 @@ class _LogoBadge extends StatelessWidget {
   const _LogoBadge();
 
   @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Container(
-          width: 28, height: 28,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-                colors: [_accent, _cyan],
-                begin: Alignment.topLeft,
-                end:   Alignment.bottomRight),
-            borderRadius: BorderRadius.circular(7),
-            boxShadow: [
-              BoxShadow(
-                  color:      _accent.withValues(alpha: 0.35),
-                  blurRadius: 8,
-                  offset:     const Offset(0, 3)),
-            ],
-          ),
-          child: const Icon(Icons.track_changes_rounded,
-              color: Colors.white, size: 16),
-        ),
-        const SizedBox(width: 8),
-        RichText(
-          text: const TextSpan(children: [
-            TextSpan(
-              text: 'Track',
-              style: TextStyle(
-                  color:         _textPri,
-                  fontSize:      18,
-                  fontWeight:    FontWeight.w800,
-                  letterSpacing: -0.3),
-            ),
-            TextSpan(
-              text: 'All',
-              style: TextStyle(
-                  color:         _accentGlow,
-                  fontSize:      18,
-                  fontWeight:    FontWeight.w800,
-                  letterSpacing: -0.3),
-            ),
-          ]),
-        ),
-      ],
-    );
-  }
+ Widget build(BuildContext context) {
+  return Container(
+    height: 45, // Set desired pill height
+    padding: const EdgeInsets.symmetric(horizontal: 2),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(6),
+    ),
+    child: Image.asset(
+      'assets/icon/trackall_logo.png',
+      fit: BoxFit.contain,
+    ),
+  );
+}
 }
 
 // ─────────────────────────────────────────────
@@ -931,6 +923,23 @@ class _ModernSidebarState extends State<_ModernSidebar>
           onTap: () => Navigator.push(context,
               MaterialPageRoute(
                   builder: (_) => const CtlNptEntryPage()))));
+
+                  if (widget.assignedMenuIds.contains(143)) // ← replace 999 with your real menu ID
+      i.add(_MenuItem(
+          label: 'Process & SMV Set',
+          icon:  Icons.tune_rounded,
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(
+                  builder: (_) => const ProcessSmvSetPage()))));
+
+                  if (true) // TEMP: showing for everyone during testing — restore real menu ID check before release
+  if (widget.assignedMenuIds.contains(316))
+      i.add(_MenuItem(
+          label: 'Time Study',
+          icon:  Icons.timer_outlined,
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(
+                  builder: (_) => const LineBalancingScanPage()))));
     return i;
   }
 

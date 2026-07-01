@@ -134,7 +134,7 @@ class _SOSPageState extends State<SOSPage> with SingleTickerProviderStateMixin {
           staffId: e['STAFF_ID']?.toString() ?? 'N/A',
           lastComment: e['LSH_CMNT']?.toString() ?? '',
           lastNotReadyElapsed: lastNRDuration,
-          refreshParent: () => setState(() {}),
+          refreshParent: () { if (mounted) setState(() {}); },
         ));
       }
 
@@ -347,10 +347,21 @@ class _SOSPageState extends State<SOSPage> with SingleTickerProviderStateMixin {
                                     );
 
                                     if (success) {
-                                      print("✅ Status saved to backend");
-                                      // Refresh to get updated DOWNTIME from backend
-                                      await _loadSOSLines();
-                                    } else {
+  print("✅ Status saved to backend");
+
+  // ── Kanban alert ──────────────────────────────────
+  final alertStatus = selectedStatus == 'Not Ready'
+    ? 'NOT READY'
+    : 'READY';          // ← keep as-is, backend dev must match this casing
+await _lovService.sendKanbanAlert(
+  lineId:  line.id,
+  status:  alertStatus,
+  company: companyId,
+);
+
+  // Refresh to get updated DOWNTIME from backend
+  await _loadSOSLines();
+} else {
                                       ScaffoldMessenger.of(context).showSnackBar(
                                         const SnackBar(content: Text('Failed to update line on server')),
                                       );

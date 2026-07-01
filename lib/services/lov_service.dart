@@ -507,18 +507,22 @@ Future<String> fetchPlanRemainingQty({
     final company = await _getSelectedCompany();
     if (company == null || company.isEmpty) return "0";
 
-    final request = http.Request('GET', Uri.parse(_baseUrl));
-    request.headers.addAll({
+    // ✅ Send as query string, not headers
+    final queryParams = <String, String>{
+      'P_QRYTYP':      'REM_PLAN_QTY',
+      'LOGIN_COMPANY': company,
       'p_bii_id':      biiId,
       'p_process_id':  processId,
       'p_size':        sizeId,
-      'P_QRYTYP':      'REM_PLAN_QTY',
       if (planNo != null && planNo.isNotEmpty) 'P_PLAN_NO': planNo,
-      'LOGIN_COMPANY': company,
-    });
+    };
 
-    final streamed = await request.send();
-    final response = await http.Response.fromStream(streamed);
+    final uri      = _buildUri(queryParams);  // ✅ uses _baseUrl with query string
+    final response = await http.get(uri);
+
+    debugPrint("📡 PLAN REM QTY URL => $uri");
+    debugPrint("📡 PLAN REM QTY BODY => ${response.body}");
+
     if (response.statusCode != 200) return "0";
 
     final decoded = jsonDecode(response.body);
@@ -529,7 +533,7 @@ Future<String> fetchPlanRemainingQty({
 
     final first = rawList.first as Map;
     for (final key in [
-      "REAMING_QUANTITY",   // backend typo
+      "REAMING_QUANTITY",   // backend typo preserved
       "REMAINING_QUANTITY",
       "REMAINING_QTY",
       "REM_QTY",
@@ -600,6 +604,7 @@ Future<String> fetchPlanRemainingQty({
     required String gmtLossQty,
     required String staffId,
     required String numberOfOperators,
+    List<Map<String, String>> scannedMachines = const [],
   }) async {
     final selectedCompany = await _getSelectedCompany();
     final payload = _buildPayload(
@@ -620,6 +625,7 @@ Future<String> fetchPlanRemainingQty({
       gmtLossQty:        gmtLossQty,
       staffId:           staffId,
       numberOfOperators: numberOfOperators,
+      scannedMachines:   scannedMachines,
     );
     final success = await _post(payload);
     if (!success) await _saveOffline(payload);
@@ -627,19 +633,45 @@ Future<String> fetchPlanRemainingQty({
   }
 
   Future<bool> _post(Map<String, dynamic> payload) async {
-    try {
-      final response = await http.post(
-        Uri.parse(_saveUrl),
-        headers: {"Content-Type": "application/json", "Accept": "application/json"},
-        body: jsonEncode(payload),
-      );
-      if (response.statusCode != 200) return false;
-      final decoded = jsonDecode(response.body);
-      return decoded["status"]?.toString().toUpperCase() == "SUCCESS";
-    } catch (e) {
+  try {
+    debugPrint('📡 NPT SAVE URL  => $_saveUrl');
+    debugPrint('📡 NPT SAVE BODY => ${jsonEncode(payload)}');
+
+    final response = await http.post(
+      Uri.parse(_saveUrl),
+      headers: {
+        "Content-Type": "application/json",
+        "Accept":       "application/json",
+      },
+      body: jsonEncode(payload),
+    );
+
+    debugPrint('📡 NPT SAVE STATUS => ${response.statusCode}');
+    debugPrint('📡 NPT SAVE BODY   => ${response.body}');
+
+    if (response.statusCode != 200) {
+      debugPrint('❌ NPT SAVE FAILED: HTTP ${response.statusCode}');
       return false;
     }
+
+    final decoded = jsonDecode(response.body);
+    debugPrint('📡 NPT SAVE DECODED => $decoded');
+
+    final status = decoded["status"]?.toString().toUpperCase();
+    debugPrint('📡 NPT SAVE STATUS FIELD => "$status"');
+
+    if (status == "SUCCESS") return true;
+
+    // Log why it failed
+    debugPrint('❌ NPT SAVE: status was "$status", expected "SUCCESS"');
+    debugPrint('❌ NPT SAVE: message => ${decoded["message"] ?? decoded["msg"] ?? "no message"}');
+    return false;
+
+  } catch (e, st) {
+    debugPrint('❌ NPT SAVE EXCEPTION: $e\n$st');
+    return false;
   }
+}
 
   Future<void> _saveOffline(Map<String, dynamic> payload) async {
     final prefs = await SharedPreferences.getInstance();
@@ -649,7 +681,7 @@ Future<String> fetchPlanRemainingQty({
     await prefs.setString(_offlineKey, jsonEncode(list));
   }
 
-  Map<String, dynamic> _buildPayload({
+ Map<String, dynamic> _buildPayload({
     required DateTime entryDate,
     required String? businessCompanyId,
     required String buildingId,
@@ -667,6 +699,7 @@ Future<String> fetchPlanRemainingQty({
     required String gmtLossQty,
     required String staffId,
     required String numberOfOperators,
+    List<Map<String, String>> scannedMachines = const [],
   }) {
     final st = DateTime(entryDate.year, entryDate.month, entryDate.day,
         startTime.hour, startTime.minute);
@@ -695,85 +728,183 @@ Future<String> fetchPlanRemainingQty({
       "DW_GMT_LOSS_QTY":  n(gmtLossQty),
       "REMARKS":          remarks,
       "USER_NAME":        staffId,
+
+      if (scannedMachines.isNotEmpty)
+        "DW_AMIM_ID": scannedMachines.map((m) => m['id']).join(','),
     };
   }
 
   String _fmt(DateTime dt) => DateFormat('dd-MM-yyyy HH:mm').format(dt);
 
+
+// ===============================================================
+// FETCH RESPONSIBLE DEPARTMENT (CTL Downtime only)
+// ===============================================================
+Future<List<Map<String, String>>> fetchRespDeptCtl({
+  required String appUserId,
+}) async {
+  try {
+    final company = await _getSelectedCompany();
+    if (company == null || company.isEmpty) return [];
+
+    final uri = _buildUri({
+      'P_QRYTYP':      'RESP_DEPT_CK',
+      'LOGIN_COMPANY': company,
+    });
+
+    debugPrint('🌐 RESP_DEPT_CK => $uri');
+    final response = await http.get(uri);
+    if (response.statusCode != 200) return [];
+
+    final decoded = jsonDecode(response.body);
+    if (!decoded.containsKey('RESP_DEPT_CK')) {
+      debugPrint('❌ RESP_DEPT_CK key missing. Keys: ${decoded.keys.toList()}');
+      return [];
+    }
+
+    final list = decoded['RESP_DEPT_CK'] as List;
+    debugPrint('📦 RESP_DEPT_CK: ${list.length} items');
+
+    return list.map<Map<String, String>>((e) => {
+      'id':    e['DEPT_ID']?.toString()   ?? '',
+      'label': e['DEPT_NAME']?.toString() ?? '',
+    }).toList();
+  } catch (e) {
+    debugPrint('❌ RESP_DEPT_CK EXCEPTION: $e');
+    return [];
+  }
+}
+
+  // ===============================================================
+// FETCH RESPONSIBLE USER BY DEPARTMENT (CTL Downtime only)
+// ===============================================================
+Future<List<Map<String, String>>> fetchRespUserByDept({
+  required String deptId,
+  required String appUserId,
+}) async {
+  try {
+    final company = await _getSelectedCompany();
+    if (company == null || company.isEmpty) return [];
+
+    final uri = _buildUri({
+      'P_QRYTYP':      'DEPT_RESP_USER',  // ← correct type
+      'LOGIN_COMPANY': company,
+      'p_sos_dept_id': deptId,
+    });
+
+    debugPrint('🌐 DEPT_RESP_USER for dept [$deptId] => $uri');
+    final response = await http.get(uri);
+    if (response.statusCode != 200) return [];
+
+    final decoded = jsonDecode(response.body);
+    if (!decoded.containsKey('DEPT_RESP_USER')) {
+      debugPrint('❌ DEPT_RESP_USER key missing. Keys: ${decoded.keys.toList()}');
+      return [];
+    }
+
+    final list = decoded['DEPT_RESP_USER'] as List;
+    debugPrint('📦 DEPT_RESP_USER for dept $deptId: ${list.length} items');
+    if (list.isNotEmpty) debugPrint('🔍 First: ${list.first}');
+
+    return list.map<Map<String, String>>((e) => {
+      'id':    e['R']?.toString() ?? '',
+      'label': e['D']?.toString() ?? '',
+    }).toList();
+  } catch (e) {
+    debugPrint('❌ DEPT_RESP_USER EXCEPTION: $e');
+    return [];
+  }
+}
+
   // ===============================================================
   // SAVE PRODUCTION ENTRY
   // ===============================================================
-  Future<bool> saveProductionEntry({
-    required String lineId,
-    required String processId,
-    required String biiId,
-    required String bpoId,
-    required String size,
-    required String rejectQty,
-    required String prodQty,
-    required String bundleCount,
-    required String flag,
-    required String appUser,
-    String  pType  = 'NORMAL',
-    String? planNo,
-  }) async {
-    try {
-      final company = await _getSelectedCompany();
-      if (company == null || company.isEmpty) {
-        debugPrint("❌ PRODUCTION SAVE BLOCKED: No company selected");
-        return false;
-      }
-
-      final queryParams = <String, String>{
-        "P_ACTION":           "I",
-        "P_TYPE":             pType,
-        "P_PD_BII_ID":        biiId,
-        "P_PD_PROCESS_ID":    processId,
-        "P_PD_LINE_ID":       lineId,
-        "P_PD_SIZE":          size,
-        "P_PD_PROD_QTY":      prodQty,
-        "P_PD_BPO_ID":        bpoId,
-        "P_LOGIN_COMPANY":    company,
-        "P_USER":             appUser,
-        "P_PD_REJECT_QTY":   rejectQty,
-        "P_PD_BUNDDLE_COUNT": bundleCount,
-        "P_PD_FLAG":          flag,
-      };
-      if (planNo != null && planNo.isNotEmpty) queryParams["P_PD_PLAN_NO"] = planNo;
-
-      final uri = _buildUri(
-        queryParams,
-        base: "https://ego.rflgroupbd.com:8077/ords/rpro/xxtrac_al/Production_API",
-      );
-      debugPrint("📡 PRODUCTION SAVE URL => $uri");
-
-      final request  = http.Request('POST', uri);
-      final streamed = await request.send();
-      final response = await http.Response.fromStream(streamed);
-
-      debugPrint("📡 STATUS: ${response.statusCode}");
-      debugPrint("📡 BODY:   ${response.body}");
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final body = response.body.trim();
-        if (body.isEmpty) return false;
-        try {
-          final decoded = jsonDecode(body);
-          final status  = decoded["status"]?.toString().toUpperCase() ?? "";
-          if (status == "SUCCESS" || decoded["PD_ID"] != null) return true;
-          return false;
-        } catch (e) {
-          debugPrint("❌ PRODUCTION SAVE JSON PARSE ERROR: $e | body=$body");
-          return false;
-        }
-      }
-      return false;
-    } catch (e, st) {
-      debugPrint("❌ PRODUCTION SAVE EXCEPTION: $e\n$st");
-      return false;
+Future<String?> saveProductionEntry({
+  required String lineId,
+  required String processId,
+  required String biiId,
+  required String bpoId,
+  required String size,
+  required String rejectQty,
+  required String prodQty,
+  required String bundleCount,
+  required String flag,
+  required String appUser,
+  String  pType  = 'NORMAL',
+  String? planNo,
+}) async {
+  try {
+    final company = await _getSelectedCompany();
+    if (company == null || company.isEmpty) {
+      return "No company selected";
     }
-  }
 
+    final Map<String, dynamic> bodyMap = {
+      "P_ACTION":           "I",
+      "P_TYPE":             pType,
+      "P_PD_BII_ID":        int.tryParse(biiId)       ?? 0,
+      "P_PD_PROCESS_ID":    int.tryParse(processId)   ?? 0,
+      "P_PD_LINE_ID":       int.tryParse(lineId)      ?? 0,
+      "P_PD_SIZE":          size,
+      "P_PD_PROD_QTY":      int.tryParse(prodQty)     ?? 0,
+      "P_PD_REJECT_QTY":    int.tryParse(rejectQty)   ?? 0,
+      "P_PD_ALTER_QTY":     0,
+      "P_PD_BPO_ID":        int.tryParse(bpoId)       ?? 0,
+      "P_PD_ORDER_ID":      null,
+      "P_PD_PH_ID":         null,
+      "P_PD_BUNDDLE_COUNT": int.tryParse(bundleCount) ?? 1,
+      "P_PD_TO_LINE_ID":    null,
+      "P_PD_RES_PERSON":    null,
+      "P_PD_SMV_VERSION":   null,
+      "P_PD_FLAG":          flag,
+      "P_LOGIN_COMPANY":    int.tryParse(company)     ?? 0,
+      "P_USER":             appUser,
+      "P_PD_DATE":          DateFormat('yyyy-MM-dd').format(DateTime.now()),
+      "P_PD_RPD_PLN_NO":    planNo,
+    };
+
+    final uri = Uri.parse(
+      "https://ego.rflgroupbd.com:8077/ords/rpro/xxtrac_al/Production_API",
+    );
+
+    debugPrint("📡 PRODUCTION SAVE BODY => ${jsonEncode(bodyMap)}");
+
+    final request = http.Request('POST', uri);
+    request.headers['Content-Type'] = 'application/json';
+    request.headers['Accept']       = 'application/json';
+    request.body = jsonEncode(bodyMap);
+
+    final streamed = await request.send();
+    final response = await http.Response.fromStream(streamed);
+
+    debugPrint("📡 STATUS: ${response.statusCode}");
+    debugPrint("📡 BODY:   ${response.body}");
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final body = response.body.trim();
+      if (body.isEmpty) return "Empty response from server";
+      try {
+        final decoded = jsonDecode(body);
+        final status  = decoded["status"]?.toString().toUpperCase() ?? "";
+        if (status == "SUCCESS") {
+          debugPrint("✅ PRODUCTION SAVED — PD_ID: ${decoded['pd_id']}");
+          return null; // ✅ null = success
+        }
+        final msg = decoded["message"]?.toString() ?? "Unknown error";
+        debugPrint("❌ ORACLE ERROR: $msg");
+        return msg; // ✅ real Oracle error message
+      } catch (e) {
+        debugPrint("❌ JSON PARSE ERROR: $e");
+        return "Invalid response from server";
+      }
+    }
+    return "Server error: ${response.statusCode}";
+
+  } catch (e, st) {
+    debugPrint("❌ PRODUCTION SAVE EXCEPTION: $e\n$st");
+    return e.toString();
+  }
+}
   // ===============================================================
   // SAVE PACKING ENTRY
   // ===============================================================
@@ -945,6 +1076,88 @@ Future<String> fetchPlanRemainingQty({
       return false;
     }
   }
+
+  // ===============================================================
+// KANBAN ALERT — fetch code + send to alert server
+// ===============================================================
+Future<void> sendKanbanAlert({
+  required String lineId,
+  required String status,
+  required String company,
+}) async {
+  try {
+    debugPrint('');
+    debugPrint('╔══════════════════════════════════════════════');
+    debugPrint('║ 🔔 KANBAN ALERT TRIGGERED');
+    debugPrint('║ 📋 Line ID : $lineId');
+    debugPrint('║ 📊 Status  : $status');
+    debugPrint('║ 🏢 Company : $company');
+    debugPrint('╚══════════════════════════════════════════════');
+
+    final params = <String, String>{
+      'P_QRYTYP':      'KANBAN_ALERT_CODE',
+      'P_STATUS':      status,
+      'LOGIN_COMPANY': company,
+      'p_line_id':     lineId,
+    };
+
+    final uri = _buildUri(params);
+    debugPrint('🌐 KANBAN FETCH URL => $uri');
+
+    final response = await http.get(uri);
+    debugPrint('📥 KANBAN FETCH STATUS => ${response.statusCode}');
+    debugPrint('📥 KANBAN FETCH BODY   => ${response.body}');
+
+    if (response.statusCode != 200) {
+      debugPrint('❌ KANBAN ALERT ABORTED: HTTP ${response.statusCode}');
+      return;
+    }
+
+    final decoded = jsonDecode(response.body);
+    final list    = decoded['KANBAN_ALERT_CODE'] as List? ?? [];
+
+    debugPrint('📦 KANBAN_ALERT_CODE items: ${list.length}');
+    for (int i = 0; i < list.length; i++) {
+      debugPrint('   [$i] => ${list[i]}');
+    }
+
+    if (list.isEmpty) {
+      debugPrint('⚠️ KANBAN ALERT ABORTED: response list is empty');
+      return;
+    }
+
+    final first = list.first as Map;
+    final code = first['code']?.toString()
+              ?? first['CODE']?.toString()
+              ?? '';
+    debugPrint('🔑 KANBAN CODE => "$code"');
+
+    if (code.isEmpty || code.toUpperCase() == 'NULL') {
+      debugPrint('⚠️ KANBAN ALERT ABORTED: code is NULL');
+      debugPrint('   Reason: Not all lines are Ready yet (backend returned NULL)');
+      return;
+    }
+
+    final alertUri = Uri.parse('http://203.202.242.25:8080/?msg=$code');
+    debugPrint('📡 SENDING ALERT => $alertUri');
+
+    final alertResp = await http.get(alertUri);
+    debugPrint('📡 ALERT SERVER STATUS => ${alertResp.statusCode}');
+    debugPrint('📡 ALERT SERVER BODY   => ${alertResp.body}');
+
+    if (alertResp.statusCode == 200) {
+      debugPrint('✅ KANBAN ALERT SENT SUCCESSFULLY: msg=$code');
+    } else {
+      debugPrint('❌ KANBAN ALERT SEND FAILED: HTTP ${alertResp.statusCode}');
+    }
+
+    debugPrint('══════════════════════════════════════════════');
+    debugPrint('');
+  } catch (e, st) {
+    debugPrint('❌ KANBAN ALERT EXCEPTION: $e');
+    debugPrint('   Stack: $st');
+  }
+}
 
   // ===============================================================
   // IMAGE UPLOAD  (shared core)

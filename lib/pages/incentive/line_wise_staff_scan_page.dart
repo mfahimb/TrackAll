@@ -39,7 +39,24 @@ class _S extends State<LineWiseStaffScanPage>
   _LineInfo? _line;
   final List<_StaffEntry> _staffList = [];
 
-  late final MobileScannerController _ctrl = MobileScannerController(
+  MobileScannerController _ctrl = MobileScannerController(
+  facing: CameraFacing.back,
+  detectionSpeed: DetectionSpeed.normal,
+  returnImage: false,
+  formats: [
+    BarcodeFormat.qrCode,
+    BarcodeFormat.code128,
+    BarcodeFormat.code39,
+    BarcodeFormat.ean13,
+    BarcodeFormat.ean8,
+    BarcodeFormat.upcA,
+    BarcodeFormat.upcE,
+  ],
+);
+
+MobileScannerController _freshController() {
+  _ctrl.dispose();
+  _ctrl = MobileScannerController(
     facing: CameraFacing.back,
     detectionSpeed: DetectionSpeed.normal,
     returnImage: false,
@@ -53,6 +70,8 @@ class _S extends State<LineWiseStaffScanPage>
       BarcodeFormat.upcE,
     ],
   );
+  return _ctrl;
+}
 
   bool _busy = false;
   bool _dialog = false;
@@ -86,29 +105,30 @@ class _S extends State<LineWiseStaffScanPage>
 
   // ── Camera controls ────────────────────────────────────────────────
 
-  Future<void> _startLineScan() async {
-    _busy = false;
-    _sessionCodes.clear();
-    await _ctrl.start();
-    setState(() {
-      _phase = _Phase.scanningLine;
-      _camVisible = true;
-    });
-  }
+ Future<void> _startLineScan() async {
+  _busy = false;
+  _sessionCodes.clear();
+  _freshController();
+  setState(() {
+    _phase = _Phase.scanningLine;
+    _camVisible = true;
+  });
+}
 
-  Future<void> _startStaffScan() async {
-    _busy = false;
-    _sessionCodes.clear();
-    await _ctrl.start();
-    setState(() {
-      _phase = _Phase.scanningStaff;
-      _camVisible = true;
-    });
-  }
+Future<void> _startStaffScan() async {
+  _busy = false;
+  _sessionCodes.clear();
+  _freshController();
+  setState(() {
+    _phase = _Phase.scanningStaff;
+    _camVisible = true;
+  });
+}
 
   Future<void> _stopCamera() async {
-    await _ctrl.stop();
     if (mounted) setState(() => _camVisible = false);
+    await _ctrl.stop();
+    _ctrl.dispose();
   }
 
   Future<void> _reset() async {
@@ -116,6 +136,7 @@ class _S extends State<LineWiseStaffScanPage>
     _dialog = false;
     _sessionCodes.clear();
     await _ctrl.stop();
+    _ctrl.dispose();
     if (!mounted) return;
     setState(() {
       _phase = _Phase.idle;

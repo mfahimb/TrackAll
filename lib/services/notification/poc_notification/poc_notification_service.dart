@@ -36,6 +36,14 @@ class PocNotificationService extends ChangeNotifier {
   bool _loading = false;
   bool get loading => _loading;
 
+  bool _bannersShown = false;
+  bool get bannersShown => _bannersShown;
+  void markBannersShown() => _bannersShown = true;
+
+  bool _systemNotifsShown = false;
+  bool get systemNotifsShown => _systemNotifsShown;
+  void markSystemNotifsShown() => _systemNotifsShown = true;
+
   // Unseen badge counts (raw minus seen, floored at 0)
   Map<ApprovalStage, int> get counts => {
     for (final s in ApprovalStage.values)
@@ -96,6 +104,10 @@ class PocNotificationService extends ChangeNotifier {
     _rawCounts = next;
     newAlerts  = alerts;
     _loading   = false;
+    if (alerts.isNotEmpty) {
+      _bannersShown = false;
+      _systemNotifsShown = false;
+    }
     notifyListeners();
   }
 

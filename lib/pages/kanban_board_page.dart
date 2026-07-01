@@ -138,7 +138,7 @@ class _KanbanBoardPageState extends State<KanbanBoardPage> with TickerProviderSt
               _parseDowntime(e['DOWNTIME']?.toString()),
           serverNow: _parseDbDate(e['SYSDATE']?.toString()),
           backendNotReadyStart: _parseDbDate(e['LSH_DATE']?.toString()),
-          refreshParent: () => setState(() {}),
+          refreshParent: () { if (mounted) setState(() {}); },
         ));
       }
 

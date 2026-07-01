@@ -16,7 +16,7 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.pranrflmis.trackall"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36          // ✅ Fixed (was flutter.compileSdkVersion)
     ndkVersion = "27.0.12077973"
 
     compileOptions {
@@ -33,8 +33,8 @@ android {
 
     defaultConfig {
         applicationId = "com.pranrflmis.trackall"
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        minSdk = flutter.minSdkVersion          // ✅ Fixed (was flutter.minSdkVersion)
+        targetSdk = 36       // ✅ Fixed (was 35, Google Play now requires 36)
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled = true
@@ -71,6 +71,14 @@ android {
     }
 }
 
+// ✅ Force consistent androidx.core version across all subprojects
+configurations.all {
+    resolutionStrategy {
+        force("androidx.core:core:1.13.1")
+        force("androidx.core:core-ktx:1.13.1")
+    }
+}
+
 flutter {
     source = "../.."
 }
@@ -83,6 +91,8 @@ dependencies {
 
     // ✅ FCM
     implementation("com.google.firebase:firebase-messaging")
+
+    // ✅ Explicit androidx.core to resolve resource linking issues
+    implementation("androidx.core:core:1.13.1")
+    implementation("androidx.core:core-ktx:1.13.1")
 }
-
-

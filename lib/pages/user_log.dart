@@ -155,10 +155,10 @@ class _LogEntry {
   String get qty   => raw[type.qtyKey ?? ""]?.toString() ?? "";
 
   bool get isShiftA {
-    if (dateTime == null) return true;
-    final m = dateTime!.hour * 60 + dateTime!.minute;
-    return m >= 495 && m <= 1215;
-  }
+  if (dateTime == null) return true;
+  final m = dateTime!.hour * 60 + dateTime!.minute;
+  return m >= 480 && m <= 1215;
+}
 }
 
 // ── Service ───────────────────────────────────────────────────────────

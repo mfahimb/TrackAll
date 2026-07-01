@@ -2,9 +2,11 @@ import 'dart:convert';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trackall_app/pages/widgets/top_menu_bar.dart';
 import '../services/lov_service.dart';
+import '../services/machine_qr.dart';
 import 'package:intl/intl.dart';
 
 // =====================================================================
@@ -102,13 +104,441 @@ class _CtlOverflowScrollTextState extends State<CtlOverflowScrollText> {
             child: Padding(
               padding: const EdgeInsets.only(right: 8),
               child: Icon(
-                _isScrolled ? Icons.chevron_left_rounded : Icons.chevron_right_rounded,
+                _isScrolled
+                    ? Icons.chevron_left_rounded
+                    : Icons.chevron_right_rounded,
                 size: 18,
                 color: const Color(0xFF1A73E8),
               ),
             ),
           ),
       ],
+    );
+  }
+}
+
+// =====================================================================
+// MACHINE SCANNER BOTTOM SHEET
+// =====================================================================
+class MachineScannerSheet extends StatefulWidget {
+  /// Pre-existing scanned machines so re-opening keeps history
+  final List<Map<String, String>> initialMachines;
+
+  const MachineScannerSheet({super.key, this.initialMachines = const []});
+
+  @override
+  State<MachineScannerSheet> createState() => _MachineScannerSheetState();
+}
+
+class _MachineScannerSheetState extends State<MachineScannerSheet> {
+  final MobileScannerController _scanCtrl = MobileScannerController(
+    detectionSpeed: DetectionSpeed.noDuplicates,
+    returnImage: false,
+  );
+
+  late List<Map<String, String>> _scannedMachines;
+  bool _isScannerActive = true;
+  bool _isPreloading = true;
+  String? _lastScanned;
+  DateTime? _lastSnackbarTime;
+  final MachineQrService _qrService = MachineQrService();
+
+  @override
+  void initState() {
+    super.initState();
+    _scannedMachines = List.from(widget.initialMachines);
+    _qrService.preload().then((_) {
+      if (mounted) setState(() => _isPreloading = false);
+    });
+  }
+
+  @override
+  void dispose() {
+    _scanCtrl.dispose();
+    super.dispose();
+  }
+
+void _onDetect(BarcodeCapture capture) {
+  // 1. Still loading — show feedback instead of silently dropping
+  if (_isPreloading) {
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(const SnackBar(
+        content: Text("Still loading machine list, please wait..."),
+        duration: Duration(seconds: 1),
+        backgroundColor: Colors.blueGrey,
+      ));
+    return;
+  }
+
+  final barcode = capture.barcodes.firstOrNull;
+  if (barcode == null) return;
+  final raw = barcode.rawValue?.trim();
+  if (raw == null || raw.isEmpty) return;
+
+  // 2. Duplicate already in list
+   final fullAmim = _qrService.fullAmimId(raw);
+   final isDuplicate = _scannedMachines.any((m) => m['id'] == fullAmim);
+   
+  if (isDuplicate) {
+    final now = DateTime.now();
+    final lastTime = _lastSnackbarTime;
+    if (lastTime == null || now.difference(lastTime).inMilliseconds > 2000) {
+      _lastSnackbarTime = now;
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+          ..clearSnackBars()
+          ..showSnackBar(const SnackBar(
+            content: Text("This machine is already added."),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 2),
+          ));
+      }
+    }
+    return;
+  }
+
+  // 3. Throttle: same raw value within 1.5 s → ignore (avoids double-fire)
+  final now = DateTime.now();
+  if (_lastScanned == raw) {
+    final lastTime = _lastSnackbarTime;
+    if (lastTime != null && now.difference(lastTime).inMilliseconds < 1500) return;
+  }
+
+  // 4. Lookup
+  final machineName = _qrService.lookup(raw);
+  debugPrint('🔎 Scanned raw: "$raw" → name: "$machineName"');
+
+  if (machineName == null) {
+    _lastScanned = raw;
+    _lastSnackbarTime = now;
+    if (mounted) {
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(SnackBar(
+          content: Text("No machine found for QR: $raw"),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 2),
+        ));
+    }
+    return;
+  }
+
+  // 5. Success
+  // 5. Success
+  HapticFeedback.mediumImpact();
+  _lastScanned = raw;
+  _lastSnackbarTime = now;
+  if (mounted) {
+    setState(() {
+      _scannedMachines.add({
+        'id':   _qrService.fullAmimId(raw), // full AMIM string for backend
+        'name': machineName,
+      });
+    });
+  }
+}
+
+  void _removeMachine(int index) {
+    setState(() {
+      _scannedMachines.removeAt(index);
+      _lastScanned = null;
+    });
+  }
+
+  void _toggleScanner() {
+    setState(() => _isScannerActive = !_isScannerActive);
+    if (_isScannerActive) {
+      _scanCtrl.start();
+    } else {
+      _scanCtrl.stop();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.88,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        children: [
+          // ── Handle ──────────────────────────────────────────────
+          const SizedBox(height: 12),
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // ── Title ────────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                const Icon(Icons.qr_code_scanner_rounded,
+                    color: Color(0xFF1A73E8), size: 20),
+                const SizedBox(width: 8),
+                const Text(
+                  "Scan Machine QR",
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black),
+                ),
+                const Spacer(),
+                TextButton.icon(
+                  onPressed: _toggleScanner,
+                  icon: Icon(
+                      _isScannerActive ? Icons.pause_circle : Icons.play_circle,
+                      size: 16),
+                  label: Text(_isScannerActive ? "Pause" : "Resume",
+                      style: const TextStyle(fontSize: 12)),
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFF1A73E8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    backgroundColor: const Color(0xFFE8F0FE),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20)),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // ── Camera viewport ──────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: SizedBox(
+                height: 220,
+                child: Stack(
+                  children: [
+                    MobileScanner(
+                      controller: _scanCtrl,
+                      onDetect: _onDetect,
+                    ),
+                    // Scan frame overlay
+                    Center(
+                      child: Container(
+                        width: 180,
+                        height: 180,
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                              color: const Color(0xFF1A73E8), width: 2.5),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    // Hint / loading label
+                    Positioned(
+                      bottom: 10,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: _isPreloading
+                            ? Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.70),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    SizedBox(
+                                      width: 12, height: 12,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2, color: Colors.white),
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text("Loading machine list...",
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600)),
+                                  ],
+                                ),
+                              )
+                            : Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.55),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: const Text(
+                                  "Point at machine QR code",
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // ── Scanned list header ──────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Text(
+                  "Scanned Machines (${_scannedMachines.length})",
+                  style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.black),
+                ),
+                const Spacer(),
+                if (_scannedMachines.isNotEmpty)
+                  GestureDetector(
+                    onTap: () => setState(() => _scannedMachines.clear()),
+                    child: Text(
+                      "Clear All",
+                      style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.red.shade400),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 6),
+
+          // ── Scanned list ─────────────────────────────────────────
+          Expanded(
+            child: _scannedMachines.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.qr_code_2_rounded,
+                            color: Colors.grey.shade300, size: 48),
+                        const SizedBox(height: 8),
+                        Text(
+                          "No machines scanned yet",
+                          style: TextStyle(
+                              color: Colors.grey.shade400,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: _scannedMachines.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 6),
+                    itemBuilder: (context, index) {
+                      final machine = _scannedMachines[index];
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF0F4FF),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFFD0E0FF)),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 28,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1A73E8),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  "${index + 1}",
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    machine['name']!,
+                                    style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.black87),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () => _removeMachine(index),
+                              child: Icon(Icons.close_rounded,
+                                  size: 18, color: Colors.red.shade400),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+          ),
+
+          // ── OK Button ────────────────────────────────────────────
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+                16, 8, 16, MediaQuery.of(context).padding.bottom + 16),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => Navigator.pop(context, _scannedMachines),
+                icon: const Icon(Icons.check_rounded,
+                    color: Colors.white, size: 18),
+                label: Text(
+                  _scannedMachines.isEmpty
+                      ? "OK (No Machines Selected)"
+                      : "OK  ·  ${_scannedMachines.length} Machine${_scannedMachines.length > 1 ? 's' : ''} Added",
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      letterSpacing: 0.5),
+                ),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  backgroundColor: _scannedMachines.isEmpty
+                      ? Colors.grey.shade400
+                      : const Color(0xFF1A73E8),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  elevation: 2,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -142,6 +572,9 @@ class _CtlNptEntryPageState extends State<CtlNptEntryPage> {
   final TextEditingController _gmtLossController   = TextEditingController();
   final TextEditingController _remarksController   = TextEditingController();
 
+  // ── QR scanned machines ────────────────────────────────────────────
+  List<Map<String, String>> _scannedMachines = [];
+
   List<Map<String, String>> buildingList        = [],
                              processList         = [],
                              lineList            = [],
@@ -161,20 +594,21 @@ class _CtlNptEntryPageState extends State<CtlNptEntryPage> {
   late String loginUserId;
   late String selectedCompanyId;
 
-  static const _kBuilding  = 'building';
-  static const _kProcess   = 'process';
-  static const _kCategory  = 'category';
-  static const _kLine      = 'line';
-  static const _kMachine   = 'machine';
-  static const _kDept      = 'dept';
-  static const _kRespUser  = 'respUser';
-  static const _kCause     = 'cause';
-  static const _kSmv       = 'smv';
-  static const _kOperators = 'operators';
-  static const _kGmtLoss   = 'gmtLoss';
-  static const _kRemarks   = 'remarks';
-  static const _kStartTime = 'startTime';
-  static const _kEndTime   = 'endTime';
+  static const _kBuilding      = 'building';
+  static const _kProcess       = 'process';
+  static const _kCategory      = 'category';
+  static const _kLine          = 'line';
+  static const _kMachine       = 'machine';
+  static const _kDept          = 'dept';
+  static const _kRespUser      = 'respUser';
+  static const _kCause         = 'cause';
+  static const _kSmv           = 'smv';
+  static const _kOperators     = 'operators';
+  static const _kGmtLoss       = 'gmtLoss';
+  static const _kRemarks       = 'remarks';
+  static const _kStartTime     = 'startTime';
+  static const _kEndTime       = 'endTime';
+  static const _kScannedMachines = 'scannedMachines'; // ← new
 
   @override
   void initState() {
@@ -208,9 +642,8 @@ class _CtlNptEntryPageState extends State<CtlNptEntryPage> {
         _lovService.fetchLov(qryType: "BUILDING",  appUserId: loginUserId).then((v) => buildingList          = v),
         _lovService.fetchLov(qryType: "PROCESS",   appUserId: loginUserId).then((v) => processList           = v),
         _lovService.fetchLov(qryType: "DOWNTIME",  appUserId: loginUserId).then((v) => downtimeCauseList     = v),
-        _lovService.fetchLov(qryType: "RESP_DEPT", appUserId: loginUserId).then((v) => responsibleDeptList   = v),
+        _lovService.fetchRespDeptCtl(appUserId: loginUserId).then((v) => responsibleDeptList   = v),
         _lovService.fetchLov(qryType: "OPERATION", appUserId: loginUserId).then((v) => operationCategoryList = v),
-        _lovService.fetchLov(qryType: "RESP_USER", appUserId: loginUserId).then((v) => responsibleUserList   = v),
       ]);
     } catch (e) {
       debugPrint("Error fetching LOVs: $e");
@@ -227,6 +660,25 @@ class _CtlNptEntryPageState extends State<CtlNptEntryPage> {
       setState(() {});
     } catch (e) {
       debugPrint("Error fetching lines: $e");
+    }
+  }
+
+  Future<void> _fetchRespUserByDept(String deptId) async {
+    debugPrint('🔄 Loading RESP_USER for dept: $deptId');
+    setState(() {
+      responsibleUserList  = [];
+      responsibleUserId    = null;
+      responsibleUserLabel = null;
+    });
+    final users = await _lovService.fetchRespUserByDept(
+      deptId:    deptId,
+      appUserId: loginUserId,
+    );
+    if (mounted) {
+      setState(() {
+        responsibleUserList = users;
+        debugPrint('✅ RESP_USER loaded: ${users.length} users for dept $deptId');
+      });
     }
   }
 
@@ -271,6 +723,22 @@ class _CtlNptEntryPageState extends State<CtlNptEntryPage> {
     }
   }
 
+  /// Opens the machine scanner bottom sheet, preserving existing scans
+  Future<void> _openMachineScanner() async {
+    final result = await showModalBottomSheet<List<Map<String, String>>>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => MachineScannerSheet(initialMachines: _scannedMachines),
+    );
+    if (result != null) {
+      setState(() {
+        _scannedMachines = result;
+        if (_scannedMachines.isNotEmpty) _missingFields.remove(_kScannedMachines);
+      });
+    }
+  }
+
   void _clearAll() {
     setState(() {
       buildingId = null;          buildingLabel = null;
@@ -283,6 +751,7 @@ class _CtlNptEntryPageState extends State<CtlNptEntryPage> {
       machineNo = null;           machineLabel = null;
       smv = null;  remarks = null;  gmtLossQty = null;  numberOfOperators = null;
       startTime = null;           endTime = null;
+      _scannedMachines = [];      // ← clear scanned machines too
       _missingFields.clear();
     });
     _startController.clear();  _endController.clear();
@@ -306,6 +775,8 @@ class _CtlNptEntryPageState extends State<CtlNptEntryPage> {
     if (remarks == null || remarks!.trim().isEmpty)                     missing.add(_kRemarks);
     if (startTime == null)                                              missing.add(_kStartTime);
     if (endTime == null)                                                missing.add(_kEndTime);
+    // Note: scanned machines are optional for now — add validation when API is ready:
+    // if (_scannedMachines.isEmpty) missing.add(_kScannedMachines);
 
     if (missing.isNotEmpty) {
       setState(() => _missingFields..clear()..addAll(missing));
@@ -328,14 +799,25 @@ class _CtlNptEntryPageState extends State<CtlNptEntryPage> {
 
     setState(() => _missingFields.clear());
 
+    // TODO: pass scannedMachines to saveNptEntry when API is ready
     final success = await _lovService.saveNptEntry(
-      entryDate: selectedDate,
-      buildingId: buildingId!, processId: processId!, lineId: lineId!,
-      machineNo: machineNo!, smv: smv!, categoryId: categoryId!,
-      startTime: startTime!, endTime: endTime!, cause: causeLabel!,
-      deptId: deptId!, responsibleUserId: responsibleUserId!,
-      remarks: remarks!, gmtLossQty: gmtLossQty!,
-      staffId: loginUserId, numberOfOperators: numberOfOperators!,
+      entryDate:         selectedDate,
+      buildingId:        buildingId!,
+      processId:         processId!,
+      lineId:            lineId!,
+      machineNo:         machineNo!,
+      smv:               smv!,
+      categoryId:        categoryId!,
+      startTime:         startTime!,
+      endTime:           endTime!,
+      cause:             causeLabel!,
+      deptId:            deptId!,
+      responsibleUserId: responsibleUserId!,
+      remarks:           remarks!,
+      gmtLossQty:        gmtLossQty!,
+      staffId:           loginUserId,
+      numberOfOperators: numberOfOperators!,
+      scannedMachines:   _scannedMachines,   // ← ADD THIS
     );
 
     nptList.insert(0, {
@@ -345,14 +827,17 @@ class _CtlNptEntryPageState extends State<CtlNptEntryPage> {
       "P_END_TIME": _endController.text,
       "totalTime": totalTimeFormatted,
       "gmtLossQty": gmtLossQty,
+      "scannedMachines": _scannedMachines.map((m) => m['name']).join(', '),
       "isSynced": success, "date": _dateController.text,
     });
 
     await prefs.setString('ctl_npt_list', jsonEncode(nptList));
 
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(success ? "Entry Saved Successfully!" : "Saved Offline (Pending Sync)"),
-      backgroundColor: success ? Colors.green : Colors.orange,
+      content: Text(success
+          ? "Entry Saved Successfully!"
+          : "Save Failed — server rejected the entry. Contact administrator."),
+      backgroundColor: success ? Colors.green : Colors.red,
     ));
   }
 
@@ -455,7 +940,15 @@ class _CtlNptEntryPageState extends State<CtlNptEntryPage> {
                     }, width),
 
                     _modernDropdown(context, "Responsible Dept *", deptLabel, responsibleDeptList, _kDept, (id, label) {
-                      setState(() { deptId = id; deptLabel = label; _missingFields.remove(_kDept); });
+                      setState(() {
+                        deptId               = id;
+                        deptLabel            = label;
+                        responsibleUserId    = null;
+                        responsibleUserLabel = null;
+                        responsibleUserList  = [];
+                        _missingFields.remove(_kDept);
+                      });
+                      _fetchRespUserByDept(id);
                     }, width),
 
                     _timeField("Start Time *", _startController, () => pickTime(true),  width, _kStartTime, icon: Icons.access_time),
@@ -463,7 +956,6 @@ class _CtlNptEntryPageState extends State<CtlNptEntryPage> {
 
                     _readOnlyField("Total (Min)", totalTimeFormatted, width),
 
-                    // ── SMV — decimal ──────────────────────────────
                     _numberField("SMV *", _smvController, _kSmv, (v) {
                       smv = v;
                       if (v.isNotEmpty) setState(() => _missingFields.remove(_kSmv));
@@ -473,17 +965,31 @@ class _CtlNptEntryPageState extends State<CtlNptEntryPage> {
                       setState(() { causeLabel = label; _missingFields.remove(_kCause); });
                     }, width),
 
-                    // ── Operators — integers ───────────────────────
                     _numberField("Number of Operators *", _operatorsController, _kOperators, (v) {
                       numberOfOperators = v;
                       if (v.isNotEmpty) setState(() => _missingFields.remove(_kOperators));
                     }, width, integersOnly: true),
 
-                    _modernDropdown(context, "Responsible User *", responsibleUserLabel, responsibleUserList, _kRespUser, (id, label) {
-                      setState(() { responsibleUserId = id; responsibleUserLabel = label; _missingFields.remove(_kRespUser); });
-                    }, width),
+                    _modernDropdown(
+                      context,
+                      deptId == null
+                          ? "Responsible User * (select dept first)"
+                          : responsibleUserList.isEmpty
+                              ? "Responsible User * (loading...)"
+                              : "Responsible User *",
+                      responsibleUserLabel,
+                      responsibleUserList,
+                      _kRespUser,
+                      (id, label) {
+                        setState(() {
+                          responsibleUserId    = id;
+                          responsibleUserLabel = label;
+                          _missingFields.remove(_kRespUser);
+                        });
+                      },
+                      width,
+                    ),
 
-                    // ── GMT Loss — decimal ─────────────────────────
                     _numberField("GMT Loss Qty *", _gmtLossController, _kGmtLoss, (v) {
                       gmtLossQty = v;
                       if (v.isNotEmpty) setState(() => _missingFields.remove(_kGmtLoss));
@@ -493,6 +999,9 @@ class _CtlNptEntryPageState extends State<CtlNptEntryPage> {
                       remarks = v;
                       if (v.isNotEmpty) setState(() => _missingFields.remove(_kRemarks));
                     }, width * 2 + 12),
+
+                    // ── Machine Scan field (full width) ──────────────
+                    _machineScanField(width * 2 + 12),
 
                     const SizedBox(height: 12),
 
@@ -521,7 +1030,110 @@ class _CtlNptEntryPageState extends State<CtlNptEntryPage> {
   }
 
   // =====================================================================
-  // WIDGET HELPERS
+  // MACHINE SCAN FIELD
+  // =====================================================================
+  Widget _machineScanField(double width) {
+    const isMissing = false;
+    final hasScanned = _scannedMachines.isNotEmpty;
+
+    return SizedBox(
+      width: width,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Label row
+          Row(children: [
+            const Icon(Icons.qr_code_scanner_rounded, size: 13, color: Color(0xFF1A73E8)),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                "Machine Scan",
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: isMissing ? Colors.red.shade600 : Colors.black),
+              ),
+            ),
+            if (hasScanned) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1A73E8),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  "${_scannedMachines.length}",
+                  style: const TextStyle(
+                      fontSize: 9, fontWeight: FontWeight.w800, color: Colors.white),
+                ),
+              ),
+            ],
+          ]),
+          const SizedBox(height: 4),
+
+          // Scan button
+          InkWell(
+            onTap: _openMachineScanner,
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              height: 38,
+              decoration: BoxDecoration(
+                color: hasScanned ? const Color(0xFFE8F0FE) : Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: isMissing
+                      ? Colors.red.shade400
+                      : hasScanned
+                          ? const Color(0xFF1A73E8)
+                          : Colors.grey.shade300,
+                  width: hasScanned ? 1.5 : 1,
+                ),
+                boxShadow: const [BoxShadow(color: Color(0x0F000000), blurRadius: 4, offset: Offset(0, 2))],
+              ),
+              child: Row(children: [
+                const SizedBox(width: 12),
+                Icon(
+                  hasScanned ? Icons.qr_code_2_rounded : Icons.qr_code_scanner_rounded,
+                  size: 16,
+                  color: hasScanned ? const Color(0xFF1A73E8) : Colors.black54,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    hasScanned
+                        ? _scannedMachines.map((m) => m['name']).join(', ')
+                        : "Tap to scan machine QR codes",
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: hasScanned ? FontWeight.w700 : FontWeight.w500,
+                      color: hasScanned ? const Color(0xFF1A73E8) : Colors.grey.shade500,
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(right: 10),
+                  child: Icon(
+                    Icons.chevron_right_rounded,
+                    size: 18,
+                    color: hasScanned ? const Color(0xFF1A73E8) : Colors.black38,
+                  ),
+                ),
+              ]),
+            ),
+          ),
+
+
+        ],
+      ),
+    );
+  }
+
+  // =====================================================================
+  // WIDGET HELPERS (unchanged)
   // =====================================================================
 
   Border _fieldBorder(String fieldKey) => _missingFields.contains(fieldKey)
@@ -550,7 +1162,13 @@ class _CtlNptEntryPageState extends State<CtlNptEntryPage> {
         ]),
         const SizedBox(height: 4),
         InkWell(
-          onTap: () => _searchDialog(context, label, list, onSelect),
+          onTap: () => _searchDialog(
+            context,
+            label,
+            list,
+            onSelect,
+            allowManual: label.contains("Machine"),
+          ),
           child: Container(
             height: 38,
             decoration: BoxDecoration(
@@ -652,7 +1270,6 @@ class _CtlNptEntryPageState extends State<CtlNptEntryPage> {
     );
   }
 
-  // ── Number-only field: centered using isDense + Center wrapper ───
   Widget _numberField(
     String label,
     TextEditingController controller,
@@ -718,7 +1335,6 @@ class _CtlNptEntryPageState extends State<CtlNptEntryPage> {
     );
   }
 
-  // ── Plain text field (Remarks) — centered using isDense + Center wrapper ──
   Widget _textField(String label, TextEditingController controller,
       String fieldKey, Function(String) onChanged, double width) {
     final isMissing = _missingFields.contains(fieldKey);
@@ -769,8 +1385,13 @@ class _CtlNptEntryPageState extends State<CtlNptEntryPage> {
     );
   }
 
-  void _searchDialog(BuildContext context, String title,
-      List<Map<String, String>> items, void Function(String, String) onSelect) {
+  void _searchDialog(
+    BuildContext context,
+    String title,
+    List<Map<String, String>> items,
+    void Function(String, String) onSelect, {
+    bool allowManual = false,
+  }) {
     List<Map<String, String>> filtered = List.from(items);
     String currentSearch = "";
 
@@ -786,11 +1407,16 @@ class _CtlNptEntryPageState extends State<CtlNptEntryPage> {
             height: MediaQuery.of(context).size.height * 0.80,
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
             child: Column(children: [
-              Container(width: 40, height: 4,
-                  decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
+              Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2))),
               const SizedBox(height: 12),
               Text("Select $title",
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black)),
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black)),
               const SizedBox(height: 12),
               Container(
                 height: 45,
@@ -804,7 +1430,10 @@ class _CtlNptEntryPageState extends State<CtlNptEntryPage> {
                   autofocus: false,
                   onChanged: (v) => setS(() {
                     currentSearch = v;
-                    filtered = items.where((e) => e["label"]!.toLowerCase().contains(v.toLowerCase())).toList();
+                    filtered = items
+                        .where((e) =>
+                            e["label"]!.toLowerCase().contains(v.toLowerCase()))
+                        .toList();
                   }),
                   decoration: const InputDecoration(
                     prefixIcon: Icon(Icons.search, color: Colors.black54),
@@ -816,17 +1445,24 @@ class _CtlNptEntryPageState extends State<CtlNptEntryPage> {
               const SizedBox(height: 12),
               Expanded(
                 child: ListView(children: [
-                  if (filtered.isEmpty && currentSearch.isNotEmpty)
+                  if (allowManual && filtered.isEmpty && currentSearch.isNotEmpty)
                     ListTile(
                       title: Text("Use manual: $currentSearch",
                           style: const TextStyle(fontWeight: FontWeight.bold)),
                       leading: const Icon(Icons.add_circle, color: Colors.blue),
-                      onTap: () { onSelect(currentSearch, currentSearch); Navigator.pop(context); },
+                      onTap: () {
+                        onSelect(currentSearch, currentSearch);
+                        Navigator.pop(context);
+                      },
                     ),
                   ...filtered.map((item) => ListTile(
                         title: Text(item["label"]!,
-                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                        onTap: () { onSelect(item["id"]!, item["label"]!); Navigator.pop(context); },
+                            style: const TextStyle(
+                                fontSize: 13, fontWeight: FontWeight.w600)),
+                        onTap: () {
+                          onSelect(item["id"]!, item["label"]!);
+                          Navigator.pop(context);
+                        },
                       )),
                 ]),
               ),

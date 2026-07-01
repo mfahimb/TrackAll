@@ -331,54 +331,89 @@ class _ProductionEntryPageState extends State<ProductionEntryPage> {
     ));
   }
 
-  Future<void> _handleSave() async {
-    if (itemId == null || itemId!.isEmpty) { _showError("Please select an item"); return; }
-    if (jobNo == null || jobNo!.isEmpty) { _showError("Job No is required."); return; }
-    if (bpoId == null || bpoId!.isEmpty) { _showError("BPO ID is missing."); return; }
-    if (orderNo == null || orderNo!.isEmpty) { _showError("Order No is required."); return; }
-    if (articleNo == null || articleNo!.isEmpty) { _showError("Article No is required."); return; }
-    if (processId == null || processId!.isEmpty) { _showError("Please select a process"); return; }
-    if (lineId == null || lineId!.isEmpty) { _showError("Please select a line"); return; }
-    if (sizeId == null || sizeId!.isEmpty) { _showError("Please select a size"); return; }
-    if (productionQty == null || productionQty!.isEmpty) { _showError("Please enter production quantity"); return; }
-
-    final prodQtyValue = int.tryParse(productionQty!) ?? 0;
-    if (prodQtyValue <= 0) { _showError("Production quantity must be greater than 0"); return; }
-
-    final remainingValue = int.tryParse(remainingQty ?? "0") ?? 0;
-    if (prodQtyValue > remainingValue) {
-      _showError("Production qty cannot be greater than remaining qty ($remainingValue)");
-      return;
-    }
-
-    setState(() => isLoading = true);
-    try {
-      final success = await _lovService.saveProductionEntry(
-        lineId: lineId!, processId: processId!, biiId: itemId!, bpoId: bpoId!,
-        size: size ?? sizeId ?? "", rejectQty: rejectQty ?? "0",
-        prodQty: productionQty!, bundleCount: bundleQty ?? "1",
-        flag: flag ?? "I", appUser: appUser ?? "",
-      );
-      if (!mounted) return;
-      if (success) {
-        _showSuccess("Production Entry Saved Successfully");
-        setState(() {
-          productionQty = null; productionQtyValue = 0;
-          productionQtyController.clear();
-          bundleQtyValue = 1; bundleQty = "1"; bundleQtyController.text = "1";
-          rejectQtyValue = 0; rejectQty = "0"; rejectQtyController.text = "0";
-          flag = "I";
-        });
-      } else {
-        _showError("Failed to save production entry.");
-      }
-    } catch (e) {
-      if (!mounted) return;
-      _showError(e.toString());
-    } finally {
-      if (mounted) setState(() => isLoading = false);
-    }
+ Future<void> _handleSave() async {
+  // ── Validations ──────────────────────────────────────────────
+  if (itemId == null || itemId!.isEmpty) {
+    _showError("Please select an item"); return;
   }
+  if (jobNo == null || jobNo!.isEmpty) {
+    _showError("Job No is required."); return;
+  }
+  if (bpoId == null || bpoId!.isEmpty) {
+    _showError("BPO ID is missing."); return;
+  }
+  if (processId == null || processId!.isEmpty) {
+    _showError("Please select a process"); return;
+  }
+  if (lineId == null || lineId!.isEmpty) {
+    _showError("Please select a line"); return;
+  }
+  if (sizeId == null || sizeId!.isEmpty) {
+    _showError("Please select a size"); return;
+  }
+  if (productionQty == null || productionQty!.isEmpty) {
+    _showError("Please enter production quantity"); return;
+  }
+
+  final prodQtyValue   = int.tryParse(productionQty!) ?? 0;
+  final remainingValue = int.tryParse(remainingQty ?? "0") ?? 0;
+
+  if (prodQtyValue <= 0) {
+    _showError("Production quantity must be greater than 0"); return;
+  }
+  if (prodQtyValue > remainingValue) {
+    _showError("Production qty ($prodQtyValue) cannot exceed remaining qty ($remainingValue)");
+    return;
+  }
+
+  setState(() => isLoading = true);
+  try {
+    // ✅ null = success, string = Oracle error message
+    final errorMsg = await _lovService.saveProductionEntry(
+      lineId:      lineId!,
+      processId:   processId!,
+      biiId:       itemId!,
+      bpoId:       bpoId!,
+      size:        size ?? sizeId ?? "",
+      rejectQty:   rejectQty    ?? "0",
+      prodQty:     productionQty!,
+      bundleCount: bundleQty    ?? "1",
+      flag:        flag         ?? "I",
+      appUser:     appUser      ?? "",
+      pType:       'NORMAL',
+    );
+
+    if (!mounted) return;
+
+    if (errorMsg == null) {
+      // ✅ Success — reset qty fields only, keep item/process/line/size selected
+      _showSuccess("Production Entry Saved Successfully");
+      setState(() {
+        productionQty = null;
+        productionQtyValue = 0;
+        productionQtyController.clear();
+        bundleQtyValue = 1;
+        bundleQty = "1";
+        bundleQtyController.text = "1";
+        rejectQtyValue = 0;
+        rejectQty = "0";
+        rejectQtyController.text = "0";
+        flag = "I";
+      });
+      // ✅ Refresh remaining qty after successful save
+      _loadRemainingQty();
+    } else {
+      // ✅ Show real Oracle error — e.g. "No manpower data found for this line today!"
+      _showError(errorMsg);
+    }
+
+  } catch (e) {
+    if (!mounted) return;
+    _showError(e.toString());
+  } finally {
+    if (mounted) setState(() => isLoading = false);
+  }
+}
 
   @override
   Widget build(BuildContext context) {

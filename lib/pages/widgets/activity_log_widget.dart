@@ -180,6 +180,7 @@ const List<LogCard> _allLogCards = [
   ColDef("CREATED_USER",        "Created User",       minWidth: 130),
   ColDef("CREATED_BY",          "Created By ID",      minWidth: 100),
   ColDef("DW_GMT_LOSS_QTY",     "GMT Loss Qty",       minWidth: 110),
+  ColDef("DWD_AMIM_NAME",       "Machine Name",       minWidth: 140),
 
 ],
   ),
@@ -243,11 +244,12 @@ class ActivityLogService {
 
   // ✅ FIX: Incentive needs dd-MM-yyyy date format + P_APP_USER
   if (qryType == "DAY_WISE_LINE_SETUP") {
+    final pDates = "${date.month}/${date.day}/${date.year}";
     params = {
       "P_QRYTYP":      qryType,
       "LOGIN_COMPANY": company,
       "P_APP_USER":    appUser,
-      "P_DATE":        DateFormat('dd-MM-yyyy').format(date),
+      "P_DATES":       pDates,   // ← backend uses P_DATES with MM/DD/YYYY
     };
   } else if (_noUserReports.contains(qryType)) {
     final pDates = "${date.month}/${date.day}/${date.year}";
@@ -314,16 +316,10 @@ class ActivityLogService {
       debugPrint("✅ [$qryType] ${result.length} rows loaded");
 
       // ── Client-side date filter for Incentive (API ignores P_DATE) ──
-      if (qryType == "DAY_WISE_LINE_SETUP" && result.isNotEmpty) {
-        final target = DateFormat('yyyy-MM-dd').format(date);
-        final filtered = result.where((row) {
-          final icDate = row["IC_DATE"] ?? "";
-          if (icDate.isEmpty) return false;
-          return icDate.startsWith(target);
-        }).toList();
-        debugPrint("📅 [DAY_WISE_LINE_SETUP] ${filtered.length}/${result.length} rows for $target");
-        return filtered;
-      }
+      // Backend now filters by date via P_DATES — no client-side filter needed
+if (qryType == "DAY_WISE_LINE_SETUP") {
+  debugPrint("📅 [DAY_WISE_LINE_SETUP] ${result.length} rows for ${date.month}/${date.day}/${date.year}");
+}
 
       return result;
     } catch (e) {
@@ -746,7 +742,7 @@ class _DetailSheetState extends State<_DetailSheet> {
       final clean = raw.replaceAll(RegExp(r'Z$|\+[0-9:]+$'), '');
       final dt = DateTime.parse(clean);
       final mins = dt.hour * 60 + dt.minute;
-      return mins >= 495 && mins <= 1215;
+      return mins >= 480 && mins <= 1215;
     } catch (_) {
       return true;
     }

@@ -1,7 +1,7 @@
 import org.gradle.api.tasks.Delete
 
 plugins {
-    id("com.google.gms.google-services") version "4.4.4" apply false
+    id("com.google.gms.google-services") version "4.3.15" apply false
 }
 
 allprojects {
@@ -11,6 +11,15 @@ allprojects {
     }
 }
 
+// ✅ Force consistent androidx.core across ALL subprojects (plugins included)
+subprojects {
+    configurations.all {
+        resolutionStrategy {
+            force("androidx.core:core:1.13.1")
+            force("androidx.core:core-ktx:1.13.1")
+        }
+    }
+}
 
 // ✅ Restore build output path so Flutter can find the APK
 val newBuildDir: Directory =

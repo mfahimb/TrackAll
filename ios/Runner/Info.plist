@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Trackall App</string>
+	<string>TrackAll</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -45,9 +45,29 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+
+	<!-- ✅ Camera (existing - updated description) -->
 	<key>NSCameraUsageDescription</key>
-    <string>This app needs camera access to capture QC images</string>
-    <key>NSPhotoLibraryUsageDescription</key>
-    <string>This app needs photo library access to save images</string>
+	<string>TrackAll needs camera access to scan barcodes and capture QC images.</string>
+
+	<!-- ✅ Photo Library read (existing - updated description) -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>TrackAll needs photo library access to attach images to records.</string>
+
+	<!-- ✅ Photo Library save (new) -->
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>TrackAll needs permission to save photos to your library.</string>
+
+	<!-- ✅ Firebase Cloud Messaging / Push Notifications (new) -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
+
+	<!-- ✅ Firebase Messaging - prevent swizzling issues (new) -->
+	<key>FirebaseAppDelegateProxyEnabled</key>
+	<false/>
+
 </dict>
 </plist>

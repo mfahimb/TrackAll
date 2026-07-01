@@ -301,6 +301,15 @@ String get detailFlagKey {
     }
   }
 
+  // ✅ ADD THIS RIGHT HERE
+  String get rejectAction {
+    switch (this) {
+      case ApprovalStage.ie:      return 'POC_1ST_REJECT';
+      case ApprovalStage.coaster: return 'POC_2ND_REJECT';
+      case ApprovalStage.fc:      return 'POC_3RD_REJECT';
+    }
+  }
+
   String get label {
     switch (this) {
       case ApprovalStage.ie:      return 'IE POC Approval';
@@ -484,12 +493,18 @@ Future<({
       request.headers['Content-Type'] = 'application/x-www-form-urlencoded';
 
       // ✅ All parameters in the POST body
+     // ✅ Choose correct P_ACTIONS based on approve or reject
+      final pActions = action == 'Rejected'
+          ? (stage?.rejectAction ?? 'POC_1ST_REJECT')
+          : (stage?.pActions     ?? 'POC_1ST');
+
       request.body = Uri(queryParameters: {
-        'P_PCH_ID':   pchId.toString(),
-        'P_APP_USER': appUser,
-        'P_ACTIONS':  stage?.pActions ?? 'POC_1ST',
-        'P_ACTION':   action,    // ✅ 'Approved' or 'Rejected'
-        'P_REMARKS':  remarks,   // ✅ rejection reason (empty string if approved)
+        'P_PCH_ID':     pchId.toString(),
+        'P_APP_USER':   appUser,
+        'P_ACTIONS':    pActions,   // ✅ Now correct for both cases
+        'P_ACTION':     action,
+        'P_REMARKS':    remarks,
+        'p_company_id': company,
       }).query;
 
       debugPrint('📤 submitApproval URL    : $url');
@@ -497,6 +512,7 @@ Future<({
       debugPrint('📤 P_ACTIONS             : ${stage?.pActions ?? 'POC_1ST'}');
       debugPrint('📤 P_ACTION              : $action');
       debugPrint('📤 P_REMARKS             : $remarks');
+      debugPrint('📤 p_company_id          : $company');
 
       final streamed = await request.send().timeout(const Duration(seconds: 15));
       final body     = await streamed.stream.bytesToString();

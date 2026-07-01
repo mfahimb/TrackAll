@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#E3F2FD</color>
+    <color name="ic_launcher_background">#ffffff</color>
+
+    <!-- Fix for android_intent_plus / androidx.core resource linking -->
+    <color name="androidx_core_secondary_text_default_material_light">#8A000000</color>
+    <color name="androidx_core_secondary_text_default_material_dark">#B3FFFFFF</color>
 </resources>
