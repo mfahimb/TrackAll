@@ -12,9 +12,9 @@ import '../../pages/npt_entry_page.dart' as npt;
 
 // Same endpoints + cache identifiers the login page uses.
 const _bannerLovUrl =
-    "https://ego.rflgroupbd.com:8077/ords/rpro/xxtrac_al/get_lov";
+    "https://trackall.rflgroupbd.com/ords/rpro/xxtrac_al/get_lov";
 const _bannerImgUrl =
-    "https://ego.rflgroupbd.com:8077/ords/rpro/xxtrac_al/qc_img_upload";
+    "https://trackall.rflgroupbd.com/ords/rpro/xxtrac_al/qc_img_upload";
 const _bannerFileName = "login_banner.img"; // on-disk cached image
 const _bannerNameKey  = "login_banner_file"; // prefs: current server file name
 

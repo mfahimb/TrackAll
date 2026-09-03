@@ -9,14 +9,14 @@ import 'package:flutter/foundation.dart' show Uint8List;
 
 class LovService {
   static const String _uploadUrl =
-      "https://ego.rflgroupbd.com:8077/ords/rpro/xxtrac_al/qc_img_upload";
+      "https://trackall.rflgroupbd.com/ords/rpro/xxtrac_al/qc_img_upload";
   static const String _baseUrl =
-      "https://ego.rflgroupbd.com:8077/ords/rpro/xxtrac_al/get_lov";
+      "https://trackall.rflgroupbd.com/ords/rpro/xxtrac_al/get_lov";
   static const String _saveUrl =
-      "https://ego.rflgroupbd.com:8077/ords/rpro/xxtrac_al/Downtime_api";
+      "https://trackall.rflgroupbd.com/ords/rpro/xxtrac_al/Downtime_api";
 
   static const String _packingUrl =
-      "https://ego.rflgroupbd.com:8077/ords/rpro/xxtrac_al/Packing_Production";
+      "https://trackall.rflgroupbd.com/ords/rpro/xxtrac_al/Packing_Production";
 
   static const String _offlineKey     = "offline_npt_queue";
   static const String _companyPrefKey = "selected_company_id";
@@ -864,7 +864,7 @@ Future<String?> saveProductionEntry({
     };
 
     final uri = Uri.parse(
-      "https://ego.rflgroupbd.com:8077/ords/rpro/xxtrac_al/Production_API",
+      "https://trackall.rflgroupbd.com/ords/rpro/xxtrac_al/Production_API",
     );
 
     debugPrint("📡 PRODUCTION SAVE BODY => ${jsonEncode(bodyMap)}");
@@ -934,12 +934,12 @@ Future<String?> saveProductionEntry({
         }).toList(),
       };
 
-      final request = http.Request('POST', Uri.parse(_packingUrl));
-      request.headers.addAll({
+      final uri = Uri.parse(_packingUrl).replace(queryParameters: {
         'P_COMPANY_ID': company,
         'P_APP_USER':   appUser,
-        'Content-Type': 'application/json',
       });
+      final request = http.Request('POST', uri);
+      request.headers['Content-Type'] = 'application/json';
       request.body = jsonEncode(body);
 
       debugPrint("📡 PACKING SAVE URL     => $_packingUrl");
@@ -1004,15 +1004,14 @@ Future<String?> saveProductionEntry({
         }).toList(),
       };
 
-      final request = http.Request(
-        'POST',
-        Uri.parse("https://ego.rflgroupbd.com:8077/ords/rpro/xxtrac_al/Plan_Packing_Production"),
-      );
-      request.headers.addAll({
+      final uri = Uri.parse(
+        "https://trackall.rflgroupbd.com/ords/rpro/xxtrac_al/Plan_Packing_Production",
+      ).replace(queryParameters: {
         'P_COMPANY_ID': company,
         'P_APP_USER':   appUser,
-        'Content-Type': 'application/json',
       });
+      final request = http.Request('POST', uri);
+      request.headers['Content-Type'] = 'application/json';
       request.body = jsonEncode(body);
 
       debugPrint("📡 PLAN PACKING SAVE URL     => Plan_Packing_Production");
@@ -1046,7 +1045,7 @@ Future<String?> saveProductionEntry({
     }
   }
 
-  // ===============================================================
+ // ===============================================================
   // SAVE SOS LINE
   // ===============================================================
   Future<bool> saveSosLine({
@@ -1058,21 +1057,38 @@ Future<String?> saveProductionEntry({
     required String company,
   }) async {
     try {
-      final request = http.Request(
-        'POST',
-        Uri.parse("https://ego.rflgroupbd.com:8077/ords/rpro/xxtrac_al/line_head_UP_INS"),
-      );
-      request.headers.addAll({
+      final queryParams = <String, String>{
         'V_ACTION':    action,
         'V_LINE_ID':   lineId,
         'V_LINE_STAT': lineStatus,
         'V_LINE_CMNT': lineComment,
         'V_APP_USER':  appUser,
         'V_COMPANY':   company,
-      });
-      final response = await request.send();
-      return response.statusCode == 200;
+      };
+      final uri = Uri.parse(
+        "https://trackall.rflgroupbd.com/ords/rpro/xxtrac_al/line_head_UP_INS",
+      ).replace(queryParameters: queryParams);
+
+      debugPrint("📡 SOS SAVE URL => $uri");
+
+      final response = await http.post(uri);
+
+      debugPrint("📡 SOS SAVE STATUS => ${response.statusCode}");
+      debugPrint("📡 SOS SAVE BODY   => ${response.body}");
+
+      if (response.statusCode != 200 && response.statusCode != 201) return false;
+
+      final body = response.body.trim();
+      if (body.isEmpty) return true;
+      try {
+        final decoded = jsonDecode(body);
+        final status  = decoded["status"]?.toString().toUpperCase() ?? "";
+        return status == "SUCCESS" || decoded["success"] == true;
+      } catch (_) {
+        return true;
+      }
     } catch (e) {
+      debugPrint("❌ SOS SAVE EXCEPTION: $e");
       return false;
     }
   }
@@ -1285,113 +1301,116 @@ Future<void> sendKanbanAlert({
   // SAVE QC ENTRY
   // ===============================================================
   Future<bool> saveQcEntry({
-    required String biiId,
-    required String jobNo,
-    required String orderNo,
-    required String articleNo,
-    required String processId,
-    required String lineId,
-    required String qcType,
-    String? sizeId,
-    String? size,
-    required String issueTypeId,
-    required String side,
-    required String quantity,
-    required String checkedById,
-    required String appUserId,
-    String?    imagePath,
-    File?      mobileImageFile,
-    Uint8List? webImageBytes,
-  }) async {
-    try {
-      final selectedCompany = await _getSelectedCompany();
-      if (selectedCompany == null || selectedCompany.isEmpty) {
-        debugPrint("❌ QC SAVE BLOCKED: No company selected");
-        return false;
-      }
-      if (imagePath == null && mobileImageFile == null && webImageBytes == null) {
-        debugPrint("❌ QC SAVE BLOCKED: No image provided");
-        return false;
-      }
-
-      Uint8List? imageBytes;
-      final filename = 'qc_${DateTime.now().millisecondsSinceEpoch}.jpg';
-
-      if (webImageBytes != null && webImageBytes.isNotEmpty) {
-        imageBytes = webImageBytes;
-      } else if (mobileImageFile != null) {
-        imageBytes = await mobileImageFile.readAsBytes();
-      }
-      if (imageBytes == null || imageBytes.isEmpty) {
-        debugPrint("❌ QC SAVE BLOCKED: Failed to read image bytes");
-        return false;
-      }
-
-      final uri     = Uri.parse(_uploadUrl);
-      final request = http.Request('POST', uri);
-
-      request.headers['p_app_user']       = appUserId;
-      request.headers['Login_company']    = selectedCompany;
-      request.headers['filename']         = filename;
-      request.headers['pdqc_bii_id']      = biiId;
-      request.headers['pdqc_process_id']  = processId;
-      request.headers['pdqc_line_id']     = lineId;
-      request.headers['pdqc_qc_type']     = qcType;
-      request.headers['pdqc_qc_resp']     = issueTypeId;
-      request.headers['side']             = side;
-      request.headers['pdqc_reject_qty']  = quantity;
-      request.headers['pdqc_checked_by']  = checkedById;
-      request.headers['pdqc_qc_priority'] = 'Major';
-      request.headers['pdqc_alter_qty']   = '0';
-      request.headers['pdqc_order_id']    = orderNo;
-      request.headers['pdqc_size']        = (sizeId != null && sizeId.isNotEmpty)
-          ? sizeId
-          : (size != null && size.isNotEmpty ? size : '0');
-      request.headers['Content-Type']     = 'image/jpeg';
-      request.bodyBytes = imageBytes;
-
-      debugPrint("📡 QC SAVE REQUEST: $_uploadUrl");
-      request.headers.forEach((k, v) {
-        if (k != 'Content-Type') debugPrint("   $k: $v");
-      });
-      debugPrint("   Image size: ${imageBytes.length} bytes");
-
-      final streamed = await request.send();
-      final response = await http.Response.fromStream(streamed);
-
-      debugPrint("📡 QC SAVE RESPONSE: ${response.statusCode} | ${response.body}");
-
-      if (response.statusCode == 200) {
-        try {
-          final decoded = jsonDecode(response.body);
-          final success = decoded['success'] == true ||
-              decoded['status']?.toString().toUpperCase() == 'SUCCESS' ||
-              decoded['pdqc_id'] != null;
-          debugPrint(success ? "✅ QC ENTRY SAVED" : "❌ QC SAVE FAILED: $decoded");
-          return success;
-        } catch (e) {
-          debugPrint("⚠️ QC SAVE: non-JSON 200, treating as success");
-          return true;
-        }
-      } else if (response.statusCode == 201) {
-        debugPrint("✅ QC ENTRY SAVED (201)");
-        return true;
-      }
-
-      debugPrint("❌ QC SAVE FAILED: HTTP ${response.statusCode}");
-      return false;
-    } on TimeoutException {
-      debugPrint("❌ QC SAVE TIMEOUT");
-      return false;
-    } on http.ClientException catch (e) {
-      debugPrint("❌ QC SAVE CLIENT EXCEPTION: $e");
-      return false;
-    } catch (e, st) {
-      debugPrint("❌ QC SAVE EXCEPTION: $e\n$st");
+  required String biiId,
+  required String jobNo,
+  required String orderNo,
+  required String articleNo,
+  required String processId,
+  required String lineId,
+  required String qcType,
+  String? sizeId,
+  String? size,
+  required String issueTypeId,
+  required String side,
+  required String quantity,
+  required String checkedById,
+  required String appUserId,
+  String?    imagePath,
+  File?      mobileImageFile,
+  Uint8List? webImageBytes,
+}) async {
+  try {
+    final selectedCompany = await _getSelectedCompany();
+    if (selectedCompany == null || selectedCompany.isEmpty) {
+      debugPrint("❌ QC SAVE BLOCKED: No company selected");
       return false;
     }
-  }
+    if (imagePath == null && mobileImageFile == null && webImageBytes == null) {
+      debugPrint("❌ QC SAVE BLOCKED: No image provided");
+      return false;
+    }
 
+    Uint8List? imageBytes;
+    final filename = 'qc_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+    if (webImageBytes != null && webImageBytes.isNotEmpty) {
+      imageBytes = webImageBytes;
+    } else if (mobileImageFile != null) {
+      imageBytes = await mobileImageFile.readAsBytes();
+    }
+    if (imageBytes == null || imageBytes.isEmpty) {
+      debugPrint("❌ QC SAVE BLOCKED: Failed to read image bytes");
+      return false;
+    }
+
+    final resolvedSize = (sizeId != null && sizeId.isNotEmpty)
+        ? sizeId
+        : (size != null && size.isNotEmpty ? size : '0');
+
+    // ✅ All params now go in the query string, not headers
+    final queryParams = <String, String>{
+      'p_app_user':        appUserId,
+      'Login_company':     selectedCompany,
+      'filename':          filename,
+      'pdqc_bii_id':       biiId,
+      'pdqc_process_id':   processId,
+      'pdqc_line_id':      lineId,
+      'pdqc_qc_type':      qcType,
+      'pdqc_qc_resp':      issueTypeId,
+      'side':              side,
+      'pdqc_reject_qty':   quantity,
+      'pdqc_checked_by':   checkedById,
+      'pdqc_qc_priority':  'Major',
+      'pdqc_alter_qty':    '0',
+      'pdqc_order_id':     orderNo,
+      'pdqc_size':         resolvedSize,
+    };
+
+    final uri = Uri.parse(_uploadUrl).replace(queryParameters: queryParams);
+    final request = http.Request('POST', uri);
+
+    // Content-Type stays as a real header — it's the body's MIME type
+    request.headers['Content-Type'] = 'image/jpeg';
+    request.bodyBytes = imageBytes;
+
+    debugPrint("📡 QC SAVE REQUEST: $uri");
+    debugPrint("   Image size: ${imageBytes.length} bytes");
+
+    final streamed = await request.send();
+    final response = await http.Response.fromStream(streamed);
+
+    debugPrint("📡 QC SAVE RESPONSE: ${response.statusCode} | ${response.body}");
+
+    if (response.statusCode == 200) {
+      try {
+        final decoded = jsonDecode(response.body);
+        final success = decoded['success'] == true ||
+            decoded['status']?.toString().toUpperCase() == 'SUCCESS' ||
+            decoded['pdqc_id'] != null;
+        debugPrint(success ? "✅ QC ENTRY SAVED" : "❌ QC SAVE FAILED: $decoded");
+        return success;
+      } catch (e) {
+        debugPrint("⚠️ QC SAVE: non-JSON 200, treating as success");
+        return true;
+      }
+    } else if (response.statusCode == 201) {
+      debugPrint("✅ QC ENTRY SAVED (201)");
+      return true;
+    }
+
+    debugPrint("❌ QC SAVE FAILED: HTTP ${response.statusCode}");
+    return false;
+  } on TimeoutException {
+    debugPrint("❌ QC SAVE TIMEOUT");
+    return false;
+  } on http.ClientException catch (e) {
+    debugPrint("❌ QC SAVE CLIENT EXCEPTION: $e");
+    return false;
+  } catch (e, st) {
+    debugPrint("❌ QC SAVE EXCEPTION: $e\n$st");
+    return false;
+  }
+}
   // ===============================================================
   // PRIVATE HELPERS
   // ===============================================================

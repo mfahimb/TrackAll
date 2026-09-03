@@ -5,8 +5,8 @@ import 'package:http/http.dart' as http;
 // ─────────────────────────────────────────────
 // BASE URLs
 // ─────────────────────────────────────────────
-const _baseUrl    = "https://ego.rflgroupbd.com:8077/ords/rpro/xxtrac_al/get_lov";
-const _approveUrl = "https://ego.rflgroupbd.com:8077/ords/rpro/xxtrac_al/POC_APPROVED";
+const _baseUrl    = "https://trackall.rflgroupbd.com/ords/rpro/xxtrac_al/get_lov";
+const _approveUrl = "https://trackall.rflgroupbd.com/ords/rpro/xxtrac_al/POC_APPROVED";
 
 // ─────────────────────────────────────────────
 // ── SHARED MODELS ─────────────────────────────

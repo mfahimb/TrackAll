@@ -158,12 +158,12 @@ const List<LogCard> _allLogCards = [
   ColDef("CREATED_BY",          "Created By ID",      minWidth: 100),
 ],
   ),
-  LogCard(
+   LogCard(
     title: "CTL Downtime",
     icon: Icons.hourglass_bottom_rounded,
     color: Color(0xFFEC4899),
     menuId: 165,
-    qryType: "NPT_REPORT",
+    qryType: "CTL_NPT_REPORT",
     columns: [
   ColDef("LCH_NAME",            "Building",           minWidth: 110),
   ColDef("PROCESS_NAME",        "Process",            minWidth: 110),
@@ -231,7 +231,7 @@ const _noUserReports = {
 
 class ActivityLogService {
   static const String _baseUrl =
-      "https://ego.rflgroupbd.com:8077/ords/rpro/xxtrac_al/get_lov";
+      "https://trackall.rflgroupbd.com/ords/rpro/xxtrac_al/get_lov";
 
   Future<List<Map<String, String>>> fetchLog({
   required String qryType,

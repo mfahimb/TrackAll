@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class MachineQrService {
   static const _baseUrl =
-      'https://ego.rflgroupbd.com:8077/ords/rpro/xxtrac_al/get_lov';
+      'https://trackall.rflgroupbd.com/ords/rpro/xxtrac_al/get_lov';
 
   static Map<String, String>? _cache;        // rawQr → machine name
   static Map<String, String>? _idToFullR;    // rawQr → full AMIM string

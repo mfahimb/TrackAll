@@ -108,7 +108,7 @@ class SmvProcessDetail {
 
 class ProcessSmvService {
   static const String baseUrl =
-      'https://ego.rflgroupbd.com:8077/ords/rpro/xxtrac_al/get_lov';
+      'https://trackall.rflgroupbd.com/ords/rpro/xxtrac_al/get_lov';
 
   // ── 1. Item list ─────────────────────────────────────────────────
   // GET ?P_QRYTYP=PROCESS_BII&LOGIN_COMPANY=<companyId>
@@ -303,7 +303,7 @@ class ProcessSmvService {
   // bind variable but is no longer used by the backend for row
   // processing, so we send it empty.
   static const String _saveUrl =
-      'https://ego.rflgroupbd.com:8077/ords/rpro/xxtrac_al/Process_and_smv/new_version';
+      'https://trackall.rflgroupbd.com/ords/rpro/xxtrac_al/Process_and_smv/new_version';
 
   Future<String?> saveSmvSet({
     required int    biiId,

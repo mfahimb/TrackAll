@@ -60,7 +60,7 @@ class _CompanySelectPageState extends State<CompanySelectPage>
       final userId = prefs.getString('userId') ?? "0";
 
       final uri = Uri.parse(
-              "https://ego.rflgroupbd.com:8077/ords/rpro/xxtrac_al/get_lov")
+              "https://trackall.rflgroupbd.com/ords/rpro/xxtrac_al/get_lov")
           .replace(queryParameters: {
         "P_QRYTYP": "ASSIGN",
         "P_APP_USER": userId,

@@ -164,7 +164,7 @@ class _LogEntry {
 // ── Service ───────────────────────────────────────────────────────────
 class _UserLogService {
   static const _base =
-      "https://ego.rflgroupbd.com:8077/ords/rpro/xxtrac_al/get_lov";
+      "https://trackall.rflgroupbd.com/ords/rpro/xxtrac_al/get_lov";
 
   Future<Map<String, List<_LogEntry>>> fetchAll({
     required String appUser,

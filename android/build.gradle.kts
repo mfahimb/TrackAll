@@ -1,5 +1,15 @@
 import org.gradle.api.tasks.Delete
 
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath("com.google.gms:google-services:4.3.15")
+    }
+}
+
 plugins {
     id("com.google.gms.google-services") version "4.3.15" apply false
 }

@@ -95,4 +95,9 @@ dependencies {
     // ✅ Explicit androidx.core to resolve resource linking issues
     implementation("androidx.core:core:1.13.1")
     implementation("androidx.core:core-ktx:1.13.1")
+
+    // ✅ Test dependencies (resolve "Unresolved dependency" IDE warnings)
+    testImplementation("org.jetbrains.kotlin:kotlin-test:2.0.21")
+    testImplementation("io.mockk:mockk:1.13.16")
+    testImplementation("org.mockito:mockito-core:5.8.0")
 }

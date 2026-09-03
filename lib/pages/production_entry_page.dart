@@ -938,7 +938,7 @@ class _ProductionEntryPageState extends State<ProductionEntryPage> {
                         final aNo = (e["STYLE_NO"] ?? "").toLowerCase();
                         return iDesc.contains(q) || oNo.contains(q) || aNo.contains(q);
                       }).toList();
-                      currentDisplayCount = 10;
+                      currentDisplayCount = filtered.length < 10 ? filtered.length : 10;
                     }),
                     decoration: const InputDecoration(
                       prefixIcon: Icon(Icons.search, color: Colors.black54),
@@ -977,7 +977,7 @@ class _ProductionEntryPageState extends State<ProductionEntryPage> {
                         : StatefulBuilder(builder: (context, setModalState) {
                             return ListView.builder(
                               itemCount: currentDisplayCount < filtered.length
-                                  ? currentDisplayCount + 1 : currentDisplayCount,
+                                  ? currentDisplayCount + 1 : filtered.length,
                               itemBuilder: (_, index) {
                                 if (index == currentDisplayCount &&
                                     currentDisplayCount < filtered.length) {
@@ -1085,7 +1085,7 @@ class _ProductionEntryPageState extends State<ProductionEntryPage> {
                     onChanged: (v) => setS(() {
                       filtered = items.where((e) => e["label"]!
                           .toLowerCase().contains(v.toLowerCase())).toList();
-                      currentDisplayCount = 10;
+                      currentDisplayCount = filtered.length < 10 ? filtered.length : 10;
                     }),
                     decoration: const InputDecoration(
                       prefixIcon: Icon(Icons.search, color: Colors.black54),
@@ -1094,10 +1094,10 @@ class _ProductionEntryPageState extends State<ProductionEntryPage> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Expanded(
+               Expanded(
                   child: ListView.builder(
                     itemCount: currentDisplayCount < filtered.length
-                        ? currentDisplayCount + 1 : currentDisplayCount,
+                        ? currentDisplayCount + 1 : filtered.length,
                     itemBuilder: (context, index) {
                       if (index == currentDisplayCount &&
                           currentDisplayCount < filtered.length) {

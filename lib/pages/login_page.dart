@@ -1,13 +1,14 @@
 import 'dart:io';
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:trackall_app/pages/widgets/loading_indicator.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-
+import 'sign_up_page.dart';
 // ── Design tokens (match approved mobile mockup) ──────
 const _navy      = Color(0xFF456FBC); // hero background (lightened navy)
 const _formBg    = Color(0xFFEDF1F9); // light page background
@@ -30,9 +31,9 @@ const _footerGry = Color(0xFF9CA3AF);
 
 // ── Dynamic banner endpoints + cache keys ─────────────
 const _bannerLovUrl =
-    "https://ego.rflgroupbd.com:8077/ords/rpro/xxtrac_al/get_lov";
+    "https://trackall.rflgroupbd.com/ords/rpro/xxtrac_al/get_lov";
 const _bannerImgUrl =
-    "https://ego.rflgroupbd.com:8077/ords/rpro/xxtrac_al/qc_img_upload";
+    "https://trackall.rflgroupbd.com/ords/rpro/xxtrac_al/qc_img_upload";
 const _bannerFileName = "login_banner.img"; // on-disk cached image
 const _bannerNameKey  = "login_banner_file"; // prefs: current server file name
 
@@ -291,7 +292,7 @@ class _LoginPageState extends State<LoginPage>
 
     try {
       final uri = Uri.parse(
-        "https://ego.rflgroupbd.com:8077/ords/rpro/xxtrac_al/login_auth",
+        "https://trackall.rflgroupbd.com/ords/rpro/xxtrac_al/login_auth",
       );
 
       final response = await http.post(
@@ -372,7 +373,7 @@ class _LoginPageState extends State<LoginPage>
       debugPrint("📱 FCM Token: $token");
 
       final uri = Uri.parse(
-        'https://ego.rflgroupbd.com:8077/ords/rpro/xxtrac_al/FCM_TOKENS',
+        'https://trackall.rflgroupbd.com/ords/rpro/xxtrac_al/FCM_TOKENS',
       ).replace(queryParameters: {
         'P_APP_USER':  userId,
         'P_FCM_TOKEN': token,
@@ -706,7 +707,7 @@ class _LoginPageState extends State<LoginPage>
             ),
           ),
 
-          const SizedBox(height: 18),
+         const SizedBox(height: 18),
 
           // Footer
           Row(
@@ -720,6 +721,38 @@ class _LoginPageState extends State<LoginPage>
               ),
             ],
           ),
+
+          // Sign Up link — web & iOS only, hidden on Android
+          if (kIsWeb || Platform.isIOS) ...[
+            const SizedBox(height: 14),
+            GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SignUpPage()),
+                );
+              },
+              child: RichText(
+                text: const TextSpan(
+                  children: [
+                    TextSpan(
+                      text: "New user? ",
+                      style: TextStyle(fontSize: 13, color: _subtitle),
+                    ),
+                    TextSpan(
+                      text: "Sign Up here",
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: _brandBlue,
+                        fontWeight: FontWeight.w700,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

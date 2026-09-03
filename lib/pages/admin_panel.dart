@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 
 /// --- LOV Service ---
 class LovService {
-  static const String _baseUrl = "https://ego.rflgroupbd.com:8077/ords/rpro/xxtrac_al/get_lov";
+  static const String _baseUrl = "https://trackall.rflgroupbd.com/ords/rpro/xxtrac_al/get_lov";
   static const String _loginCompany = "55";
 
   Future<List<Map<String, String>>> fetchLov({

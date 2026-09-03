@@ -295,7 +295,7 @@ void initState() {
   Future<List<int>> _fetchUserMenuIds(String appUser) async {
     try {
       final uri = Uri.parse(
-              'https://ego.rflgroupbd.com:8077/ords/rpro/xxtrac_al/get_lov')
+              'https://trackall.rflgroupbd.com/ords/rpro/xxtrac_al/get_lov')
           .replace(queryParameters: {
         'P_QRYTYP':   'MENU',
         'P_APP_USER': appUser,
