@@ -144,9 +144,9 @@ class _CompanySelectPageState extends State<CompanySelectPage>
                   padding: const EdgeInsets.all(7),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                        colors: [_accent.withOpacity(0.13), _cyan.withOpacity(0.09)]),
+                        colors: [_accent.withValues(alpha: 0.13), _cyan.withValues(alpha: 0.09)]),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: _accent.withOpacity(0.18)),
+                    border: Border.all(color: _accent.withValues(alpha: 0.18)),
                   ),
                   child: const Icon(Icons.business_rounded,
                       color: _accent, size: 16),
@@ -166,7 +166,7 @@ class _CompanySelectPageState extends State<CompanySelectPage>
                 decoration: BoxDecoration(
                   color: _inputBg,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: _borderL.withOpacity(0.65)),
+                  border: Border.all(color: _borderL.withValues(alpha: 0.65)),
                 ),
                 child: TextField(
                   autofocus: false,
@@ -179,7 +179,7 @@ class _CompanySelectPageState extends State<CompanySelectPage>
                         color: _textSec, size: 18),
                     hintText: "Search company...",
                     hintStyle: TextStyle(
-                        color: _textSec.withOpacity(0.6), fontSize: 13),
+                        color: _textSec.withValues(alpha: 0.6), fontSize: 13),
                     border: InputBorder.none,
                     contentPadding:
                         const EdgeInsets.symmetric(vertical: 12),
@@ -234,19 +234,19 @@ class _CompanySelectPageState extends State<CompanySelectPage>
                                   vertical: 13, horizontal: 14),
                               decoration: BoxDecoration(
                                 color: isSelected
-                                    ? _accent.withOpacity(0.07)
+                                    ? _accent.withValues(alpha: 0.07)
                                     : Colors.white,
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
                                   color: isSelected
-                                      ? _accent.withOpacity(0.4)
-                                      : _borderL.withOpacity(0.5),
+                                      ? _accent.withValues(alpha: 0.4)
+                                      : _borderL.withValues(alpha: 0.5),
                                   width: isSelected ? 1.5 : 1.0,
                                 ),
                                 boxShadow: isSelected
                                     ? [
                                         BoxShadow(
-                                          color: _accent.withOpacity(0.08),
+                                          color: _accent.withValues(alpha: 0.08),
                                           blurRadius: 8,
                                           offset: const Offset(0, 2),
                                         )
@@ -268,8 +268,8 @@ class _CompanySelectPageState extends State<CompanySelectPage>
                                       colors: isSelected
                                           ? [_accent, _cyan]
                                           : [
-                                              _borderL.withOpacity(0.5),
-                                              _borderL.withOpacity(0.3),
+                                              _borderL.withValues(alpha: 0.5),
+                                              _borderL.withValues(alpha: 0.3),
                                             ],
                                     ),
                                     borderRadius: BorderRadius.circular(8),
@@ -353,8 +353,8 @@ class _CompanySelectPageState extends State<CompanySelectPage>
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(colors: [
-                  _accent.withOpacity(0.50),
-                  _accent.withOpacity(0),
+                  _accent.withValues(alpha: 0.50),
+                  _accent.withValues(alpha: 0),
                 ]),
               ),
             ),
@@ -370,8 +370,8 @@ class _CompanySelectPageState extends State<CompanySelectPage>
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(colors: [
-                  _cyan.withOpacity(0.45),
-                  _cyan.withOpacity(0),
+                  _cyan.withValues(alpha: 0.45),
+                  _cyan.withValues(alpha: 0),
                 ]),
               ),
             ),
@@ -410,12 +410,12 @@ class _CompanySelectPageState extends State<CompanySelectPage>
                                   borderRadius: BorderRadius.circular(18),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: _accent.withOpacity(0.28),
+                                      color: _accent.withValues(alpha: 0.28),
                                       blurRadius: 22,
                                       offset: const Offset(0, 8),
                                     ),
                                     BoxShadow(
-                                      color: _cyan.withOpacity(0.12),
+                                      color: _cyan.withValues(alpha: 0.12),
                                       blurRadius: 40,
                                       offset: const Offset(0, 14),
                                     ),
@@ -443,7 +443,7 @@ class _CompanySelectPageState extends State<CompanySelectPage>
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 12.5,
-                                  color: _textSec.withOpacity(0.8),
+                                  color: _textSec.withValues(alpha: 0.8),
                                 ),
                               ),
 
@@ -457,20 +457,20 @@ class _CompanySelectPageState extends State<CompanySelectPage>
                                       sigmaX: 16, sigmaY: 16),
                                   child: Container(
                                     decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.82),
+                                      color: Colors.white.withValues(alpha: 0.82),
                                       borderRadius: BorderRadius.circular(28),
                                       border: Border.all(
-                                        color: _borderL.withOpacity(0.75),
+                                        color: _borderL.withValues(alpha: 0.75),
                                         width: 1.4,
                                       ),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: _accent.withOpacity(0.10),
+                                          color: _accent.withValues(alpha: 0.10),
                                           blurRadius: 48,
                                           offset: const Offset(0, 20),
                                         ),
                                         BoxShadow(
-                                          color: _cyan.withOpacity(0.06),
+                                          color: _cyan.withValues(alpha: 0.06),
                                           blurRadius: 24,
                                           offset: const Offset(0, 8),
                                         ),
@@ -528,7 +528,7 @@ class _CompanySelectPageState extends State<CompanySelectPage>
                                                     border: Border.all(
                                                       color: selectedCompanyId != null
                                                           ? _accent
-                                                          : _borderL.withOpacity(0.65),
+                                                          : _borderL.withValues(alpha: 0.65),
                                                       width: selectedCompanyId != null
                                                           ? 1.6
                                                           : 1.0,
@@ -536,7 +536,7 @@ class _CompanySelectPageState extends State<CompanySelectPage>
                                                     boxShadow: selectedCompanyId != null
                                                         ? [
                                                             BoxShadow(
-                                                              color: _accent.withOpacity(0.12),
+                                                              color: _accent.withValues(alpha: 0.12),
                                                               blurRadius: 14,
                                                               offset: const Offset(0, 4),
                                                             )
@@ -553,8 +553,8 @@ class _CompanySelectPageState extends State<CompanySelectPage>
                                                           colors: selectedCompanyId != null
                                                               ? [_accent, _cyan]
                                                               : [
-                                                                  _borderL.withOpacity(0.55),
-                                                                  _borderL.withOpacity(0.30),
+                                                                  _borderL.withValues(alpha: 0.55),
+                                                                  _borderL.withValues(alpha: 0.30),
                                                                 ],
                                                           begin: Alignment.topLeft,
                                                           end: Alignment.bottomRight,
@@ -578,7 +578,7 @@ class _CompanySelectPageState extends State<CompanySelectPage>
                                                           fontWeight: FontWeight.w500,
                                                           color: selectedCompanyId != null
                                                               ? _textPri
-                                                              : _textSec.withOpacity(0.65),
+                                                              : _textSec.withValues(alpha: 0.65),
                                                         ),
                                                         overflow: TextOverflow.ellipsis,
                                                       ),
@@ -621,12 +621,12 @@ class _CompanySelectPageState extends State<CompanySelectPage>
                                                     boxShadow: selectedCompanyId != null
                                                         ? [
                                                             BoxShadow(
-                                                              color: _accent.withOpacity(0.35),
+                                                              color: _accent.withValues(alpha: 0.35),
                                                               blurRadius: 18,
                                                               offset: const Offset(0, 6),
                                                             ),
                                                             BoxShadow(
-                                                              color: _cyan.withOpacity(0.15),
+                                                              color: _cyan.withValues(alpha: 0.15),
                                                               blurRadius: 28,
                                                               offset: const Offset(0, 10),
                                                             ),
@@ -650,8 +650,8 @@ class _CompanySelectPageState extends State<CompanySelectPage>
                                                                       top: Radius.circular(14)),
                                                               gradient: LinearGradient(
                                                                 colors: [
-                                                                  Colors.white.withOpacity(0.14),
-                                                                  Colors.white.withOpacity(0),
+                                                                  Colors.white.withValues(alpha: 0.14),
+                                                                  Colors.white.withValues(alpha: 0),
                                                                 ],
                                                                 begin: Alignment.topCenter,
                                                                 end: Alignment.bottomCenter,
@@ -713,7 +713,7 @@ class _GridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFF3B82F6).withOpacity(0.045)
+      ..color = const Color(0xFF3B82F6).withValues(alpha: 0.045)
       ..strokeWidth = 0.6;
     const step = 28.0;
     for (double x = 0; x < size.width; x += step) {

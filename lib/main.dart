@@ -5,7 +5,6 @@ import 'package:in_app_update/in_app_update.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:trackall_app/pages/qc_entry_page.dart';
-import 'package:trackall_app/services/notification/poc_notification/poc_notification_service.dart';
 import 'package:trackall_app/services/notification/poc_notification/poc_notification_overlay.dart';
 import 'package:trackall_app/services/notification_service.dart';
 import 'firebase_options.dart'; // ✅ Add this
@@ -19,10 +18,6 @@ import 'pages/widgets/splash_screen.dart';
 import 'pages/admin_panel.dart';
 import 'pages/sos_page.dart';
 import 'pages/production_entry_page.dart';
-import 'pages/Plan no wise production entry page.dart';
-import 'pages/user_log.dart';
-import 'pages/packing_production_entry_page.dart';
-import 'pages/plan_wise_packing_entry_page.dart';
 import 'pages/incentive/line_wise_staff_scan_page.dart';
 
 @pragma('vm:entry-point')

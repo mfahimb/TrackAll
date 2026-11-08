@@ -31,8 +31,7 @@ class _SizeRow {
     required this.packingQty,
     required this.packingRemaining,
     required this.remainingBalance,
-    this.qty = 0,
-  }) : qtyCtrl = TextEditingController();
+  }) : qty = 0, qtyCtrl = TextEditingController();
 
   void dispose() => qtyCtrl.dispose();
 }
@@ -490,7 +489,7 @@ class _PlanWisePackingEntryPageState
                 colors: [Color(0xFFE8F0FE), Color(0xFFD2E3FC)]),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-                color: const Color(0xFF1A73E8).withOpacity(0.35), width: 1.4),
+                color: const Color(0xFF1A73E8).withValues(alpha: 0.35), width: 1.4),
             boxShadow: const [
               BoxShadow(color: Color(0x14000000), blurRadius: 4, offset: Offset(0, 2))
             ],
@@ -762,7 +761,7 @@ class _PlanWisePackingEntryPageState
                                         color: Colors.white,
                                         borderRadius: BorderRadius.circular(8),
                                         border: Border.all(
-                                            color: const Color(0xFF1A73E8).withOpacity(0.4),
+                                            color: const Color(0xFF1A73E8).withValues(alpha: 0.4),
                                             width: 1.2),
                                         boxShadow: const [
                                           BoxShadow(
@@ -1041,8 +1040,7 @@ class _PlanWisePackingEntryPageState
       BuildContext context,
       String title,
       List<Map<String, String>> items,
-      void Function(String id, String label, Map<String, String> item) onSelect,
-      [double width = double.infinity]) {
+      void Function(String id, String label, Map<String, String> item) onSelect) {
     List<Map<String, String>> filtered = List.from(items);
     showModalBottomSheet(
       context: context,

@@ -65,7 +65,10 @@ class LovService {
       final decoded = jsonDecode(response.body);
       if (!decoded.containsKey(upperType)) return [];
       final List list = decoded[upperType];
-      if (upperType == "MENU") await _saveMenuPermissions(list);
+          if (upperType == "MENU") await _saveMenuPermissions(list);
+      if (upperType == "DOWNTIME" && list.isNotEmpty) {
+        debugPrint('🧪 DOWNTIME raw first item => ${list.first}');
+      }
       return list.map<Map<String, String>>((e) => {
             "id":    e["R"]?.toString()           ?? e["IDM_ID"]?.toString()        ?? "",
             "label": e["D"]?.toString()           ?? e["IDM_MENU_NAME"]?.toString() ?? "",
@@ -604,7 +607,8 @@ Future<String> fetchPlanRemainingQty({
     required String gmtLossQty,
     required String staffId,
     required String numberOfOperators,
-    List<Map<String, String>> scannedMachines = const [],
+     List<Map<String, String>> scannedMachines = const [],
+    String? causeId,
   }) async {
     final selectedCompany = await _getSelectedCompany();
     final payload = _buildPayload(
@@ -625,7 +629,8 @@ Future<String> fetchPlanRemainingQty({
       gmtLossQty:        gmtLossQty,
       staffId:           staffId,
       numberOfOperators: numberOfOperators,
-      scannedMachines:   scannedMachines,
+         scannedMachines:   scannedMachines,
+      causeId:           causeId,
     );
     final success = await _post(payload);
     if (!success) await _saveOffline(payload);
@@ -699,7 +704,8 @@ Future<String> fetchPlanRemainingQty({
     required String gmtLossQty,
     required String staffId,
     required String numberOfOperators,
-    List<Map<String, String>> scannedMachines = const [],
+      List<Map<String, String>> scannedMachines = const [],
+    String? causeId,
   }) {
     final st = DateTime(entryDate.year, entryDate.month, entryDate.day,
         startTime.hour, startTime.minute);
@@ -714,11 +720,11 @@ Future<String> fetchPlanRemainingQty({
       "CID":              n(businessCompanyId),
       "DW_LOC_ID":        n(buildingId),
       "DW_SEC":           n(processId),
-      "DW_PROCS_ID":      n(processId),
+      "DW_PROCS_ID":      n(categoryId),
       "LINE_NO":          n(lineId),
       "DW_LINE_NO":       n(machineNo),
       "DW_SMV":           n(smv),
-      "DW_CATA":          n(categoryId),
+      "DW_CATA":          n(causeId),
       "DW_ST_TIM":        _fmt(st),
       "DW_END_TIM":       _fmt(et),
       "DW_TOT_TIM":       et.difference(st).inMinutes,

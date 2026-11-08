@@ -581,7 +581,7 @@ class _LoginPageState extends State<LoginPage>
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF1E2A4A).withOpacity(0.10),
+                  color: const Color(0xFF1E2A4A).withValues(alpha: 0.10),
                   blurRadius: 36,
                   offset: const Offset(0, 10),
                 ),
@@ -685,7 +685,7 @@ class _LoginPageState extends State<LoginPage>
                               boxShadow: [
                                 BoxShadow(
                                   color: _brandBlue
-                                      .withOpacity(_btnPressed ? 0.18 : 0.30),
+                                      .withValues(alpha: _btnPressed ? 0.18 : 0.30),
                                   blurRadius: _btnPressed ? 10 : 16,
                                   offset: Offset(0, _btnPressed ? 3 : 6),
                                 ),
@@ -783,7 +783,7 @@ class _LoginPageState extends State<LoginPage>
         boxShadow: focused
             ? [
                 BoxShadow(
-                  color: _brandBlue.withOpacity(0.10),
+                  color: _brandBlue.withValues(alpha: 0.10),
                   blurRadius: 6,
                   spreadRadius: 2,
                 )
@@ -855,7 +855,7 @@ class _WaveClipper extends CustomClipper<Path> {
 class _DotGridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = const Color(0xFF4A6BC4).withOpacity(0.30);
+    final paint = Paint()..color = const Color(0xFF4A6BC4).withValues(alpha: 0.30);
     const cols = 5, rows = 3;
     final dx = size.width / (cols - 1);
     final dy = size.height / (rows - 1);

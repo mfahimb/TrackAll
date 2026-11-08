@@ -430,10 +430,10 @@ class _UserLogPageState extends State<UserLogPage>
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 7),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1A73E8).withOpacity(0.08),
+                          color: const Color(0xFF1A73E8).withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
-                              color: const Color(0xFF1A73E8).withOpacity(0.25)),
+                              color: const Color(0xFF1A73E8).withValues(alpha: 0.25)),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -459,10 +459,10 @@ class _UserLogPageState extends State<UserLogPage>
                       child: Container(
                         padding: const EdgeInsets.all(7),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1A73E8).withOpacity(0.08),
+                          color: const Color(0xFF1A73E8).withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
-                              color: const Color(0xFF1A73E8).withOpacity(0.2)),
+                              color: const Color(0xFF1A73E8).withValues(alpha: 0.2)),
                         ),
                         child: _loading
                             ? const SizedBox(
@@ -663,10 +663,10 @@ class _TypeCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: type.color.withOpacity(0.2)),
+          border: Border.all(color: type.color.withValues(alpha: 0.2)),
           boxShadow: [
             BoxShadow(
-              color: type.color.withOpacity(0.06),
+              color: type.color.withValues(alpha: 0.06),
               blurRadius: 10,
               offset: const Offset(0, 3),
             ),
@@ -679,19 +679,19 @@ class _TypeCard extends StatelessWidget {
               padding:
                   const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
-                color: type.color.withOpacity(0.07),
+                color: type.color.withValues(alpha: 0.07),
                 borderRadius:
                     const BorderRadius.vertical(top: Radius.circular(14)),
                 border: Border(
                     bottom:
-                        BorderSide(color: type.color.withOpacity(0.15))),
+                        BorderSide(color: type.color.withValues(alpha: 0.15))),
               ),
               child: Row(
                 children: [
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: type.color.withOpacity(0.15),
+                      color: type.color.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(9),
                     ),
                     child: Icon(type.icon, color: type.color, size: 18),
@@ -785,11 +785,11 @@ class _TypeCard extends StatelessWidget {
                           style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
-                              color: type.color.withOpacity(0.7))),
+                              color: type.color.withValues(alpha: 0.7))),
                       const SizedBox(width: 4),
                       Icon(Icons.arrow_forward_rounded,
                           size: 14,
-                          color: type.color.withOpacity(0.7)),
+                          color: type.color.withValues(alpha: 0.7)),
                     ],
                   ),
                 ],
@@ -818,7 +818,7 @@ class _StatBox extends StatelessWidget {
             style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w500,
-                color: color.withOpacity(0.6))),
+                color: color.withValues(alpha: 0.6))),
         const SizedBox(height: 2),
         Text(value,
             style: TextStyle(
@@ -892,7 +892,7 @@ class _IncentiveDetailSheetState extends State<_IncentiveDetailSheet> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: _accentColor.withOpacity(0.12),
+                    color: _accentColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(Icons.emoji_events_rounded,
@@ -1063,7 +1063,7 @@ class _IncentiveDetailSheetState extends State<_IncentiveDetailSheet> {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 4, vertical: 3),
                                 decoration: BoxDecoration(
-                                  color: _accentColor.withOpacity(0.12),
+                                  color: _accentColor.withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 alignment: Alignment.center,
@@ -1130,16 +1130,16 @@ class _IncentiveDetailSheetState extends State<_IncentiveDetailSheet> {
                                   decoration: BoxDecoration(
                                     color: isShiftA
                                         ? const Color(0xFF3B82F6)
-                                            .withOpacity(0.12)
+                                            .withValues(alpha: 0.12)
                                         : const Color(0xFFF59E0B)
-                                            .withOpacity(0.12),
+                                            .withValues(alpha: 0.12),
                                     borderRadius: BorderRadius.circular(6),
                                     border: Border.all(
                                       color: isShiftA
                                           ? const Color(0xFF3B82F6)
-                                              .withOpacity(0.4)
+                                              .withValues(alpha: 0.4)
                                           : const Color(0xFFF59E0B)
-                                              .withOpacity(0.4),
+                                              .withValues(alpha: 0.4),
                                     ),
                                   ),
                                   child: Text(
@@ -1227,7 +1227,7 @@ class _DetailSheetState extends State<_DetailSheet> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: type.color.withOpacity(0.12),
+                    color: type.color.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(type.icon, color: type.color, size: 18),
@@ -1401,13 +1401,13 @@ class _EntryRow extends StatelessWidget {
                             horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
                           color: isReady
-                              ? const Color(0xFF10B981).withOpacity(0.12)
-                              : const Color(0xFFF59E0B).withOpacity(0.12),
+                              ? const Color(0xFF10B981).withValues(alpha: 0.12)
+                              : const Color(0xFFF59E0B).withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(6),
                           border: Border.all(
                             color: isReady
-                                ? const Color(0xFF10B981).withOpacity(0.4)
-                                : const Color(0xFFF59E0B).withOpacity(0.4),
+                                ? const Color(0xFF10B981).withValues(alpha: 0.4)
+                                : const Color(0xFFF59E0B).withValues(alpha: 0.4),
                           ),
                         ),
                         child: Text(
@@ -1461,15 +1461,15 @@ class _Chip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: c.withOpacity(0.08),
+        color: c.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: c.withOpacity(0.2)),
+        border: Border.all(color: c.withValues(alpha: 0.2)),
       ),
       child: Text(text,
           style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w600,
-              color: c.withOpacity(0.85))),
+              color: c.withValues(alpha: 0.85))),
     );
   }
 }

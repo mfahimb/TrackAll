@@ -1027,7 +1027,7 @@ class _TappableChip extends StatelessWidget {
   final VoidCallback? onTap;
   final String? badge;
   const _TappableChip({required this.icon, required this.label,
-      required this.value, required this.onTap, this.badge});
+      required this.value, required this.onTap}) : badge = null;
 
   @override
   Widget build(BuildContext context) {

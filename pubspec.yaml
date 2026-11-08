@@ -1,7 +1,7 @@
 name: trackall_app
 description: "TrackAll - Comprehensive tracking and management application for inventory, assets, and data entry."
 publish_to: 'none'
-version: 1.2.2+36
+version: 1.2.2+37
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
@@ -26,6 +26,9 @@ dependencies:
   in_app_update: ^4.2.3
   firebase_core: ^4.6.0
   firebase_messaging: ^16.1.3
+  pdf: ^3.13.1
+  printing: ^5.15.1
+  file_picker: ^13.3.2
 
 dev_dependencies:
   flutter_test:

@@ -134,6 +134,7 @@ class _NptEntryPageState extends State<NptEntryPage> {
   String? buildingLabel, processLabel, lineLabel, categoryLabel,
       responsibleUserLabel, deptLabel, causeLabel, machineLabel;
   String? smv, remarks, numberOfOperators;
+  String? causeId;
 
   TimeOfDay? startTime, endTime;
 
@@ -261,8 +262,8 @@ class _NptEntryPageState extends State<NptEntryPage> {
       categoryId = null;          categoryLabel = null;
       responsibleUserId = null;   responsibleUserLabel = null;
       deptId = null;              deptLabel = null;
-      causeLabel = null;
-      machineNo = null;           machineLabel = null;
+      causeLabel = null;          causeId = null;
+      machineNo = null;         machineLabel = null;
       smv = null;  remarks = null;  numberOfOperators = null;
       startTime = null;           endTime = null;
       _smvError = false;          _opsError = false;
@@ -300,6 +301,7 @@ class _NptEntryPageState extends State<NptEntryPage> {
       buildingId: buildingId!, processId: processId!, lineId: lineId!,
       machineNo: machineNo!, smv: smv!, categoryId: categoryId!,
       startTime: startTime!, endTime: endTime!, cause: causeLabel!,
+      causeId: causeId,
       deptId: deptId!, responsibleUserId: responsibleUserId!,
       remarks: remarks?? "", gmtLossQty: "0",
       staffId: loginUserId, numberOfOperators: numberOfOperators!,
@@ -434,7 +436,8 @@ class _NptEntryPageState extends State<NptEntryPage> {
                     }, width),
 
                     _modernDropdown(context, "Cause *", causeLabel, downtimeCauseList, (id, label) {
-                      setState(() => causeLabel = label);
+                        debugPrint('🧪 CAUSE selected => id="$id" label="$label"');
+                      setState(() { causeId = id; causeLabel = label; });
                     }, width),
 
                     // ── Operators — integers ───────────────────────
@@ -604,7 +607,7 @@ class _NptEntryPageState extends State<NptEntryPage> {
                 ? Border.all(color: Colors.red.shade400, width: 1.5)
                 : Border.all(color: Colors.grey.shade300),
             boxShadow: hasError
-                ? [BoxShadow(color: Colors.red.withOpacity(0.08), blurRadius: 4, offset: const Offset(0, 2))]
+                ? [BoxShadow(color: Colors.red.withValues(alpha: 0.08), blurRadius: 4, offset: const Offset(0, 2))]
                 : const [BoxShadow(color: Color(0x0F000000), blurRadius: 4, offset: Offset(0, 2))],
           ),
           child: Center(

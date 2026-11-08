@@ -13,7 +13,6 @@ class _OverflowScrollText extends StatefulWidget {
   final EdgeInsetsGeometry padding;
 
   const _OverflowScrollText({
-    super.key,
     required this.text,
     required this.style,
     this.padding = const EdgeInsets.symmetric(horizontal: 12),
@@ -877,7 +876,7 @@ class _PlanNoWiseProductionEntryPageState
                     color: const Color(0xFFF7FAFF),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                        color: const Color(0xFF1A73E8).withOpacity(0.25),
+                        color: const Color(0xFF1A73E8).withValues(alpha: 0.25),
                         width: 1.2),
                     boxShadow: const [
                       BoxShadow(
@@ -1653,7 +1652,7 @@ class _PlanNoWiseProductionEntryPageState
               color: const Color(0xFFF7FAFF),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
-                  color: const Color(0xFF1A73E8).withOpacity(0.25),
+                  color: const Color(0xFF1A73E8).withValues(alpha: 0.25),
                   width: 1.2),
               boxShadow: const [
                 BoxShadow(

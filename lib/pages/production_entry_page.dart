@@ -665,7 +665,7 @@ class _ProductionEntryPageState extends State<ProductionEntryPage> {
                     color: const Color(0xFFF7FAFF),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                        color: const Color(0xFF1A73E8).withOpacity(0.25), width: 1.2),
+                        color: const Color(0xFF1A73E8).withValues(alpha: 0.25), width: 1.2),
                     boxShadow: const [
                       BoxShadow(color: Color(0x14000000), blurRadius: 4, offset: Offset(0, 2))
                     ],
@@ -811,7 +811,7 @@ class _ProductionEntryPageState extends State<ProductionEntryPage> {
               color: const Color(0xFFF7FAFF),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
-                  color: const Color(0xFF1A73E8).withOpacity(0.25), width: 1.2),
+                  color: const Color(0xFF1A73E8).withValues(alpha: 0.25), width: 1.2),
               boxShadow: const [
                 BoxShadow(color: Color(0x14000000), blurRadius: 4, offset: Offset(0, 2))
               ],

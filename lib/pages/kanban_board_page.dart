@@ -198,7 +198,7 @@ class _KanbanBoardPageState extends State<KanbanBoardPage> with TickerProviderSt
           boxShadow: isActive
               ? [
                   BoxShadow(
-                      color: activeColor.withOpacity(0.3),
+                      color: activeColor.withValues(alpha: 0.3),
                       blurRadius: 4,
                       offset: const Offset(0, 2))
                 ]
@@ -313,7 +313,7 @@ class _KanbanBoardPageState extends State<KanbanBoardPage> with TickerProviderSt
                       width: double.infinity,
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: primaryColor.withOpacity(0.08),
+                        color: primaryColor.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(12),
                         border: Border(
                             left: BorderSide(
@@ -325,7 +325,7 @@ class _KanbanBoardPageState extends State<KanbanBoardPage> with TickerProviderSt
                             : line.lastComment,
                         style: TextStyle(
                           fontSize: 18,
-                          color: primaryColor.withOpacity(0.9),
+                          color: primaryColor.withValues(alpha: 0.9),
                           height: 1.5,
                           fontWeight: FontWeight.w600,
                         ),
@@ -489,7 +489,7 @@ class _KanbanBoardPageState extends State<KanbanBoardPage> with TickerProviderSt
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 4,
               offset: const Offset(0, 2))
         ],
@@ -509,7 +509,7 @@ class _KanbanBoardPageState extends State<KanbanBoardPage> with TickerProviderSt
               borderRadius: BorderRadius.circular(6),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.blue.withOpacity(0.3),
+                  color: Colors.blue.withValues(alpha: 0.3),
                   blurRadius: 4,
                   offset: const Offset(0, 2),
                 ),
@@ -542,7 +542,7 @@ class _KanbanBoardPageState extends State<KanbanBoardPage> with TickerProviderSt
                   borderRadius: BorderRadius.circular(6),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.03),
+                      color: Colors.black.withValues(alpha: 0.03),
                       blurRadius: 2,
                       offset: const Offset(0, 1),
                     ),
@@ -583,7 +583,7 @@ class _KanbanBoardPageState extends State<KanbanBoardPage> with TickerProviderSt
                                         boxShadow: [
                                           BoxShadow(
                                             color: Colors.blue
-                                                .withOpacity(0.3),
+                                                .withValues(alpha: 0.3),
                                             blurRadius: 3,
                                             offset: const Offset(0, 1),
                                           ),
@@ -612,7 +612,7 @@ class _KanbanBoardPageState extends State<KanbanBoardPage> with TickerProviderSt
                                                       1.5),
                                               decoration: BoxDecoration(
                                                 color: Colors.white
-                                                    .withOpacity(0.2),
+                                                    .withValues(alpha: 0.2),
                                                 shape: BoxShape.circle,
                                               ),
                                               child: const Icon(
@@ -679,7 +679,7 @@ class _KanbanBoardPageState extends State<KanbanBoardPage> with TickerProviderSt
                         top: Radius.circular(16)),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.blue.withOpacity(0.3),
+                        color: Colors.blue.withValues(alpha: 0.3),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -690,7 +690,7 @@ class _KanbanBoardPageState extends State<KanbanBoardPage> with TickerProviderSt
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: Colors.white.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Icon(Icons.filter_alt,
@@ -897,9 +897,9 @@ class _KanbanBoardPageState extends State<KanbanBoardPage> with TickerProviderSt
       ),
       body: Column(
         children: [
-          Container(height: 1, color: Colors.black.withOpacity(0.15)),
+          Container(height: 1, color: Colors.black.withValues(alpha: 0.15)),
           _buildSubHeader(),
-          Container(height: 1, color: Colors.black.withOpacity(0.1)),
+          Container(height: 1, color: Colors.black.withValues(alpha: 0.1)),
           _buildFilterBar(),
 
           // Status Tabs Row
@@ -950,14 +950,12 @@ class _KanbanBoardPageState extends State<KanbanBoardPage> with TickerProviderSt
                             return false;
                           },
                           child: GridView.builder(
-                            controller: _scrollController,
+                            scrollCacheExtent: ScrollCacheExtent.pixels(800), controller: _scrollController,
                             padding: const EdgeInsets.all(16),
                             // FIX 1: BouncingScrollPhysics for smoother native mobile feel
                             physics: const BouncingScrollPhysics(
                               parent: AlwaysScrollableScrollPhysics(),
                             ),
-                            // FIX 2: Pre-render cards outside viewport to reduce jank
-                            cacheExtent: 800,
                             gridDelegate:
                                 const SliverGridDelegateWithFixedCrossAxisCount(
                               crossAxisCount: 3,
@@ -1114,7 +1112,7 @@ class _SOSCard extends StatelessWidget {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: line.gradientColors[0].withOpacity(0.3),
+                  color: line.gradientColors[0].withValues(alpha: 0.3),
                   blurRadius: isNotReady ? 10 : 6,
                   offset: const Offset(0, 3),
                 ),
@@ -1134,8 +1132,8 @@ class _SOSCard extends StatelessWidget {
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.red.withOpacity(
-                                    0.25 * pulseAnimation.value),
+                                color: Colors.red.withValues(
+                                    alpha: 0.25 * pulseAnimation.value),
                                 blurRadius:
                                     15 + (5 * pulseAnimation.value),
                                 spreadRadius:
@@ -1181,8 +1179,8 @@ class _SOSCard extends StatelessWidget {
                             const EdgeInsets.symmetric(vertical: 4),
                         decoration: BoxDecoration(
                           color: isNotReady
-                              ? Colors.orange.withOpacity(0.8)
-                              : Colors.green.withOpacity(0.8),
+                              ? Colors.orange.withValues(alpha: 0.8)
+                              : Colors.green.withValues(alpha: 0.8),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Center(

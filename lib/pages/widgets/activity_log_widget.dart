@@ -296,7 +296,7 @@ class ActivityLogService {
       final result = <Map<String, String>>[];
       for (final item in raw) {
         if (item == null || item is! Map || item.isEmpty) continue;
-        final row = (item as Map).map<String, String>(
+        final row = (item).map<String, String>(
           (k, v) => MapEntry(k.toString(), v?.toString() ?? ""),
         );
         if (row.containsKey("CODE") && row.containsKey("MESSAGE")) continue;
@@ -469,7 +469,7 @@ class _ActivityLogSectionState extends State<ActivityLogSection> {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           padding: EdgeInsets.zero,
-          childAspectRatio: 2.8,
+          childAspectRatio: 2.6,
           children: items
               .map((c) => _CountCard(
                     card: c,
@@ -510,10 +510,10 @@ class _ActivityLogSectionState extends State<ActivityLogSection> {
               child: Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF60A5FA).withOpacity(0.1),
+                  color: const Color(0xFF60A5FA).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                      color: const Color(0xFF60A5FA).withOpacity(0.2)),
+                      color: const Color(0xFF60A5FA).withValues(alpha: 0.2)),
                 ),
                 child: _loading
                     ? const SizedBox(
@@ -553,10 +553,10 @@ class _ActivityLogSectionState extends State<ActivityLogSection> {
                 padding: const EdgeInsets.symmetric(
                     horizontal: 14, vertical: 6),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF60A5FA).withOpacity(0.08),
+                  color: const Color(0xFF60A5FA).withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                      color: const Color(0xFF60A5FA).withOpacity(0.25)),
+                      color: const Color(0xFF60A5FA).withValues(alpha: 0.25)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -603,85 +603,81 @@ class _CountCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final empty = count == 0;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              card.color.withOpacity(0.15),
-              card.color.withOpacity(0.05),
-            ],
-          ),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: card.color.withOpacity(0.25)),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                    colors: [card.color, card.color.withOpacity(0.8)]),
-                borderRadius: BorderRadius.circular(9),
-                boxShadow: [
-                  BoxShadow(
-                      color: card.color.withOpacity(0.3),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2))
-                ],
+            Row(children: [
+              Container(
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  color: card.color,
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: Icon(card.icon, color: Colors.white, size: 13),
               ),
-              child: Icon(card.icon, color: Colors.white, size: 15),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    card.title,
-                    style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF475569),
-                      height: 1.2,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  card.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF64748B),
                   ),
-                  const SizedBox(height: 1),
-                  count == null
-                      ? SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(card.color),
-                          ),
-                        )
-                      : Text(
-                          count == 0
-                              ? "No entries today"
-                              : "$count ${count == 1 ? 'entry' : 'entries'} today",
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w900,
-                            color: count == 0
-                                ? const Color(0xFF94A3B8)
-                                : card.color,
-                            height: 1.1,
-                          ),
-                        ),
-                ],
+                ),
               ),
-            ),
-            Icon(Icons.chevron_right_rounded,
-                color: card.color.withOpacity(0.5), size: 14),
+              Icon(Icons.chevron_right_rounded,
+                  color: card.color.withValues(alpha: 0.6), size: 14),
+            ]),
+            const SizedBox(height: 3),
+            count == null
+                ? SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(card.color),
+                    ),
+                  )
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Text(
+                        "$count",
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          height: 1.1,
+                          color: empty
+                              ? const Color(0xFF94A3B8)
+                              : const Color(0xFF0F172A),
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        count == 1 ? "entry today" : "entries today",
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: Color(0xFF94A3B8),
+                        ),
+                      ),
+                    ],
+                  ),
           ],
         ),
       ),
@@ -814,19 +810,19 @@ class _DetailSheetState extends State<_DetailSheet> {
                     color: Colors.white),
                 overflow: TextOverflow.ellipsis);
           } else if (_isKanban && c.key == "LSH_LINE_STAT") {
-            final val = data![c.key] ?? "-";
+            final val = data[c.key] ?? "-";
             final isReady = val.toLowerCase() == "ready";
             cell = Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
                 color: isReady
-                    ? const Color(0xFF10B981).withOpacity(0.15)
-                    : const Color(0xFFF59E0B).withOpacity(0.15),
+                    ? const Color(0xFF10B981).withValues(alpha: 0.15)
+                    : const Color(0xFFF59E0B).withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(
                   color: isReady
-                      ? const Color(0xFF10B981).withOpacity(0.4)
-                      : const Color(0xFFF59E0B).withOpacity(0.4),
+                      ? const Color(0xFF10B981).withValues(alpha: 0.4)
+                      : const Color(0xFFF59E0B).withValues(alpha: 0.4),
                 ),
               ),
               child: Text(val,
@@ -841,7 +837,7 @@ class _DetailSheetState extends State<_DetailSheet> {
           } else if (widget.card.qryType == "DAY_WISE_LINE_SETUP" &&
               c.key == "SHIFT_ID") {
             // ── Shift badge for Incentive card — intrinsic size only ──
-            final val = data![c.key] ?? "-";
+            final val = data[c.key] ?? "-";
             final isA = val.toUpperCase() == "A";
             cell = Align(
               alignment: Alignment.centerLeft,
@@ -850,13 +846,13 @@ class _DetailSheetState extends State<_DetailSheet> {
                     const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
                   color: isA
-                      ? const Color(0xFF3B82F6).withOpacity(0.12)
-                      : const Color(0xFFF59E0B).withOpacity(0.12),
+                      ? const Color(0xFF3B82F6).withValues(alpha: 0.12)
+                      : const Color(0xFFF59E0B).withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(
                     color: isA
-                        ? const Color(0xFF3B82F6).withOpacity(0.4)
-                        : const Color(0xFFF59E0B).withOpacity(0.4),
+                        ? const Color(0xFF3B82F6).withValues(alpha: 0.4)
+                        : const Color(0xFFF59E0B).withValues(alpha: 0.4),
                   ),
                 ),
                 child: Text(
@@ -872,7 +868,7 @@ class _DetailSheetState extends State<_DetailSheet> {
             );
           } else {
             cell = Text(
-              data![c.key] == null
+              data[c.key] == null
                   ? "-"
                   : _formatCell(data[c.key]!, isDateTime: c.isDateTime),
               style: const TextStyle(
@@ -929,7 +925,7 @@ class _DetailSheetState extends State<_DetailSheet> {
                   decoration: BoxDecoration(
                     gradient: LinearGradient(colors: [
                       widget.card.color,
-                      widget.card.color.withOpacity(0.8)
+                      widget.card.color.withValues(alpha: 0.8)
                     ]),
                     borderRadius: BorderRadius.circular(10),
                   ),
@@ -964,12 +960,12 @@ class _DetailSheetState extends State<_DetailSheet> {
                         horizontal: 10, vertical: 7),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(colors: [
-                        widget.card.color.withOpacity(0.15),
-                        widget.card.color.withOpacity(0.05),
+                        widget.card.color.withValues(alpha: 0.15),
+                        widget.card.color.withValues(alpha: 0.05),
                       ]),
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
-                          color: widget.card.color.withOpacity(0.3)),
+                          color: widget.card.color.withValues(alpha: 0.3)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -1030,7 +1026,7 @@ class _DetailSheetState extends State<_DetailSheet> {
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                   borderSide: BorderSide(
-                      color: widget.card.color.withOpacity(0.4), width: 1.5),
+                      color: widget.card.color.withValues(alpha: 0.4), width: 1.5),
                 ),
               ),
             ),
@@ -1187,10 +1183,10 @@ class _ShiftTab extends StatelessWidget {
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
         decoration: BoxDecoration(
-          color: isActive ? color : color.withOpacity(0.08),
+          color: isActive ? color : color.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isActive ? color : color.withOpacity(0.25),
+            color: isActive ? color : color.withValues(alpha: 0.25),
             width: isActive ? 1.5 : 1,
           ),
         ),

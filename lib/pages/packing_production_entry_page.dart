@@ -36,8 +36,7 @@ class _SizeRow {
     required this.packingQty,
     required this.packingRemaining,
     required this.remainingBalance,
-    this.qty = 0,
-  }) : qtyCtrl = TextEditingController();
+  }) : qty = 0, qtyCtrl = TextEditingController();
 
   void dispose() => qtyCtrl.dispose();
 }
@@ -437,7 +436,7 @@ class _PackingProductionEntryPageState
                 colors: [Color(0xFFE8F0FE), Color(0xFFD2E3FC)]),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-                color: const Color(0xFF1A73E8).withOpacity(0.35),
+                color: const Color(0xFF1A73E8).withValues(alpha: 0.35),
                 width: 1.4),
             boxShadow: const [
               BoxShadow(
@@ -690,7 +689,7 @@ class _PackingProductionEntryPageState
                                             BorderRadius.circular(8),
                                         border: Border.all(
                                             color: const Color(0xFF1A73E8)
-                                                .withOpacity(0.4),
+                                                .withValues(alpha: 0.4),
                                             width: 1.2),
                                         boxShadow: const [
                                           BoxShadow(
@@ -1399,8 +1398,7 @@ class _OverflowText extends StatefulWidget {
   const _OverflowText({
     required this.text,
     required this.style,
-    this.padding = const EdgeInsets.symmetric(horizontal: 12),
-  });
+  }) : padding = const EdgeInsets.symmetric(horizontal: 12);
 
   @override
   State<_OverflowText> createState() => _OverflowTextState();

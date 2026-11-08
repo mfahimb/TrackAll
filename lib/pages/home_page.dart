@@ -108,7 +108,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       icon: Icons.qr_code_scanner_rounded,
       color: const Color(0xFF22C55E),
       menuId: 109,
-      onTap: null, // tapped via _buildActionCard special case
+      onTap: null, // handled in _onActionTap
     ),
     _QuickAction(
       label: "Settings",
@@ -199,15 +199,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   List<_QuickAction> getAccessibleActions() {
-  debugPrint("🔑 assignedMenuIds: $assignedMenuIds");
-  return allActions.where((action) {
-    if (action.menuId == null) return true;
-    if (action.menuId == 109) {
-      return assignedMenuIds.any((id) => [106, 109, 262].contains(id));
-    }
-    return assignedMenuIds.contains(action.menuId);
-  }).toList();
-}
+    debugPrint("🔑 assignedMenuIds: $assignedMenuIds");
+    return allActions.where((action) {
+      if (action.menuId == null) return true;
+      if (action.menuId == 109) {
+        return assignedMenuIds.any((id) => [106, 109, 262].contains(id));
+      }
+      return assignedMenuIds.contains(action.menuId);
+    }).toList();
+  }
 
   @override
   void dispose() {
@@ -258,48 +258,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               ),
             ),
           ),
-          Positioned(
-            top: -100,
-            right: -100,
-            child: Container(
-              width: 400,
-              height: 400,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    const Color(0xFF60A5FA).withOpacity(0.2),
-                    const Color(0xFF60A5FA).withOpacity(0),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: -150,
-            left: -150,
-            child: Container(
-              width: 500,
-              height: 500,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    const Color(0xFF38BDF8).withOpacity(0.15),
-                    const Color(0xFF38BDF8).withOpacity(0),
-                  ],
-                ),
-              ),
-            ),
-          ),
           Column(
             children: [
               const TopMenuBar(),
               Expanded(
                 child: SingleChildScrollView(
                   physics: const ClampingScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -310,7 +276,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           child: _buildWelcomeCard(isMobile),
                         ),
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 16),
                       FadeTransition(
                         opacity: _fadeAnimation,
                         child: SlideTransition(
@@ -320,13 +286,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 16),
                       FadeTransition(
                         opacity: _fadeAnimation,
                         child: SlideTransition(
                           position: _slideAnimation,
-                          child: _buildQuickActions(
-                              isMobile, accessibleActions),
+                          child:
+                              _buildQuickActions(isMobile, accessibleActions),
                         ),
                       ),
                       const SizedBox(height: 10),
@@ -341,107 +307,196 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildWelcomeCard(bool isMobile) {
+   // ── Welcome card ─────────────────────────────────────────────────
+  String get _todayLabel {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    final d = DateTime.now();
+    return '${days[d.weekday - 1]}, ${d.day} ${months[d.month - 1]}';
+  }
+
+  Widget _welcomeChip(IconData icon, String text) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDarkMode
-              ? [
-                  Colors.white.withOpacity(0.1),
-                  Colors.white.withOpacity(0.05),
-                ]
-              : [
-                  const Color(0xFF60A5FA).withOpacity(0.1),
-                  const Color(0xFF38BDF8).withOpacity(0.05),
-                ],
-        ),
+        color: Colors.white.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDarkMode
-              ? const Color(0xFF60A5FA).withOpacity(0.2)
-              : const Color(0xFF60A5FA).withOpacity(0.3),
-          width: 1,
-        ),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF60A5FA), Color(0xFF38BDF8)],
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF60A5FA).withOpacity(0.3),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.dashboard_rounded,
-                  color: Colors.white,
-                  size: 18,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Welcome Back!",
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: isDarkMode
-                            ? Colors.white.withOpacity(0.7)
-                            : const Color(0xFF64748B),
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    Text(
-                      "TrackAll Dashboard",
-                      style: TextStyle(
-                        fontSize: isMobile ? 15 : 20,
-                        fontWeight: FontWeight.w900,
-                        color: isDarkMode
-                            ? Colors.white
-                            : const Color(0xFF0F172A),
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      "Manage your production workflow efficiently",
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: isDarkMode
-                            ? Colors.white.withOpacity(0.6)
-                            : const Color(0xFF64748B),
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 12, color: const Color(0xFF60A5FA)),
+        const SizedBox(width: 5),
+        Flexible(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
           ),
+        ),
+      ]),
+    );
+  }
+
+  Widget _buildWelcomeCard(bool isMobile) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF060D1F), Color(0xFF12305E)],
+          ),
+          border: Border.all(
+              color: const Color(0xFF60A5FA).withValues(alpha: 0.25)),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF3B82F6).withValues(alpha: 0.25),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Stack(
+          children: [
+            Positioned(
+              right: -30,
+              top: -40,
+              child: Container(
+                width: 130,
+                height: 130,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(colors: [
+                    const Color(0xFF60A5FA).withValues(alpha: 0.35),
+                    const Color(0xFF60A5FA).withValues(alpha: 0),
+                  ]),
+                ),
+              ),
+            ),
+            Positioned(
+              right: 50,
+              bottom: -50,
+              child: Container(
+                width: 110,
+                height: 110,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(colors: [
+                    const Color(0xFF06B6D4).withValues(alpha: 0.25),
+                    const Color(0xFF06B6D4).withValues(alpha: 0),
+                  ]),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(children: [
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF22C55E),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              "WELCOME BACK",
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1.2,
+                                color: Colors.white.withValues(alpha: 0.65),
+                              ),
+                            ),
+                          ]),
+                          const SizedBox(height: 4),
+                          Text(
+                            "TrackAll Dashboard",
+                            style: TextStyle(
+                              fontSize: isMobile ? 18 : 22,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            "Manage your production workflow efficiently",
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              color: Colors.white.withValues(alpha: 0.6),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF3B82F6), Color(0xFF06B6D4)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(13),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF3B82F6)
+                                .withValues(alpha: 0.45),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(Icons.dashboard_rounded,
+                          color: Colors.white, size: 22),
+                    ),
+                  ]),
+                  const SizedBox(height: 10),
+                  Wrap(spacing: 6, runSpacing: 6, children: [
+                    if (userId != null)
+                      _welcomeChip(Icons.person_rounded, userId!),
+                    if (companyLabel != null)
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                            maxWidth:
+                                MediaQuery.of(context).size.width * 0.5),
+                        child: _welcomeChip(
+                            Icons.business_rounded, companyLabel!),
+                      ),
+                    _welcomeChip(Icons.calendar_today_rounded, _todayLabel),
+                  ]),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
+  // ── Quick actions ────────────────────────────────────────────────
   Widget _buildQuickActions(bool isMobile, List<_QuickAction> actions) {
     final previewActions = actions.length <= _qaPreviewCount
         ? actions
@@ -458,16 +513,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           padding: EdgeInsets.zero,
-          childAspectRatio: isMobile ? 2.8 : 2.8,
-          children: items.map((action) {
-            if (action.label == "Settings") {
-              return _buildSettingsCard(isMobile, action);
-            } else if (action.label == "Help") {
-              return _buildHelpCard(isMobile, action);
-            } else {
-              return _buildActionCard(isMobile, action);
-            }
-          }).toList(),
+          childAspectRatio: isMobile ? 3.3 : 3.6,
+          children: items.map(_actionTile).toList(),
         );
 
     return Column(
@@ -497,7 +544,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         grid(previewActions),
         if (hasMore) ...[
           AnimatedCrossFade(
@@ -516,13 +563,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             child: GestureDetector(
               onTap: () => setState(() => _qaExpanded = !_qaExpanded),
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF8B5CF6).withOpacity(0.08),
+                  color: const Color(0xFF8B5CF6).withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                      color: const Color(0xFF8B5CF6).withOpacity(0.25)),
+                      color: const Color(0xFF8B5CF6).withValues(alpha: 0.25)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -557,191 +604,65 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildActionCard(bool isMobile, _QuickAction action) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            action.color.withOpacity(0.15),
-            action.color.withOpacity(0.05),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: action.color.withOpacity(0.25), width: 1),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: action.label == "Line Wise Staff Scan"
-              ? () => Navigator.pushNamed(context, '/line-staff-scan')
-              : action.onTap == null
-                  ? null
-                  : () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => action.onTap!()),
-                      ),
-          borderRadius: BorderRadius.circular(14),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [action.color, action.color.withOpacity(0.8)],
-                    ),
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: action.color.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Icon(action.icon, color: Colors.white, size: 15),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    action.label,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: isDarkMode
-                          ? Colors.white
-                          : const Color(0xFF0F172A),
-                      height: 1.3,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
+  void _onActionTap(_QuickAction action) {
+    if (action.label == "Settings") {
+      _showSettingsBottomSheet(MediaQuery.of(context).size.width < 600);
+    } else if (action.label == "Help") {
+      _showHelpBottomSheet(MediaQuery.of(context).size.width < 600);
+    } else if (action.label == "Line Wise Staff Scan") {
+      Navigator.pushNamed(context, '/line-staff-scan');
+    } else if (action.onTap != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => action.onTap!()),
+      );
+    }
   }
 
-  Widget _buildSettingsCard(bool isMobile, _QuickAction action) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            action.color.withOpacity(0.15),
-            action.color.withOpacity(0.05),
-          ],
-        ),
+  Widget _actionTile(_QuickAction action) {
+    return Material(
+      color: isDarkMode ? const Color(0xFF1E293B) : Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: () => _onActionTap(action),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: action.color.withOpacity(0.25), width: 1),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => _showSettingsBottomSheet(isMobile),
-          borderRadius: BorderRadius.circular(14),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [action.color, action.color.withOpacity(0.8)],
-                    ),
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: action.color.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Icon(action.icon, color: Colors.white, size: 15),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    action.label,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: isDarkMode
-                          ? Colors.white
-                          : const Color(0xFF0F172A),
-                    ),
-                  ),
-                ),
-              ],
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isDarkMode
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : const Color(0xFFE2E8F0),
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHelpCard(bool isMobile, _QuickAction action) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            action.color.withOpacity(0.15),
-            action.color.withOpacity(0.05),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: action.color.withOpacity(0.25), width: 1),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => _showHelpBottomSheet(isMobile),
-          borderRadius: BorderRadius.circular(14),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [action.color, action.color.withOpacity(0.8)],
-                    ),
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: action.color.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Icon(action.icon, color: Colors.white, size: 15),
+          child: Row(
+            children: [
+              Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: action.color,
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    action.label,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: isDarkMode
-                          ? Colors.white
-                          : const Color(0xFF0F172A),
-                    ),
+                child: Icon(action.icon, color: Colors.white, size: 14),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  action.label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    height: 1.2,
+                    color:
+                        isDarkMode ? Colors.white : const Color(0xFF0F172A),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -772,9 +693,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
-                    color: isDarkMode
-                        ? Colors.white
-                        : const Color(0xFF0F172A),
+                    color:
+                        isDarkMode ? Colors.white : const Color(0xFF0F172A),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -808,7 +728,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         _saveDarkMode(value);
                         Navigator.pop(context);
                       },
-                      activeColor: const Color(0xFF60A5FA),
+                      activeThumbColor: const Color(0xFF60A5FA),
                     ),
                   ],
                 ),
@@ -845,9 +765,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
-                    color: isDarkMode
-                        ? Colors.white
-                        : const Color(0xFF0F172A),
+                    color:
+                        isDarkMode ? Colors.white : const Color(0xFF0F172A),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -865,10 +784,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF60A5FA).withOpacity(0.1),
+                    color: const Color(0xFF60A5FA).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: const Color(0xFF60A5FA).withOpacity(0.2),
+                      color: const Color(0xFF60A5FA).withValues(alpha: 0.2),
                       width: 1,
                     ),
                   ),

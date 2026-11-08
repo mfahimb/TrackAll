@@ -1,7 +1,6 @@
 // lib/pages/widgets/top_menu_bar.dart
 
 import 'dart:convert';
-import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -31,6 +30,11 @@ import '../Approval/POC Approval/coaster_poc_approval.dart';
 import '../Approval/POC Approval/fc_poc_approval.dart';
 import '../process_smv_set_page.dart';
 import '../Line balancing/line_balancing_scan_page.dart';
+import '../Machine/scanned_machine_report_page.dart';
+import '../Machine/line_wise_machine_scan_page.dart';
+import '../Machine/machine_transfer_page.dart';
+import '../Machine/machine_approval_page.dart';
+import '../Machine/transfer_history_page.dart';
 // ─────────────────────────────────────────────
 // DESIGN TOKENS
 // ─────────────────────────────────────────────
@@ -721,6 +725,9 @@ class _ModernSidebarState extends State<_ModernSidebar>
                     icon:        Icons.rule_folder_rounded,
                     subSections: _approvalSubSections(),
                   )),
+                _anim(5, _section('Machine',
+                    Icons.settings_suggest_rounded,
+                    _machineItems())),
                 _anim(5, _navItem(
                   icon:  Icons.person_pin_circle_rounded,
                   label: 'My Log',
@@ -1005,6 +1012,35 @@ class _ModernSidebarState extends State<_ModernSidebar>
           icon:  Icons.approval_rounded,
           items: poc)
     ];
+  }
+
+  List<_MenuItem> _machineItems() {
+    final i = <_MenuItem>[];
+    final ids = widget.assignedMenuIds;
+
+    void add(int id, String label, IconData icon, [Widget Function()? page]) {
+      if (!ids.contains(id)) return;
+      i.add(_MenuItem(
+          label: label,
+          icon:  icon,
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(
+                  builder: (_) => page != null
+                      ? page()
+                      : _MachinePlaceholderPage(title: label)))));
+    }
+
+    add(347, 'Line Wise Machine',      Icons.view_list_rounded,
+        () => const LineWiseMachineScanPage());
+    add(350, 'Scanned Machine Report', Icons.qr_code_scanner_rounded,
+        () => const ScannedMachineReportPage());
+    add(372, 'Machine Transfer',       Icons.swap_horiz_rounded,
+        () => const MachineTransferPage());
+    add(375, 'Transfer History',       Icons.history_rounded,
+        () => const TransferHistoryPage());
+    add(374, 'Approval',               Icons.fact_check_rounded,
+        () => const MachineApprovalPage());
+    return i;
   }
 
   List<_MenuItem> _adminItems() => [
@@ -1489,4 +1525,26 @@ class _SubSection {
   final List<_MenuItem> items;
   _SubSection(
       {required this.label, required this.icon, required this.items});
+}
+
+// ─────────────────────────────────────────────
+// TEMP PLACEHOLDER — replace with real Machine pages when built
+// ─────────────────────────────────────────────
+class _MachinePlaceholderPage extends StatelessWidget {
+  final String title;
+  const _MachinePlaceholderPage({required this.title});
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        backgroundColor: _navy,
+        appBar: AppBar(
+          backgroundColor: _navy,
+          foregroundColor: _textPri,
+          title: Text(title),
+        ),
+        body: Center(
+          child: Text('$title — coming soon',
+              style: const TextStyle(color: _textSec, fontSize: 15)),
+        ),
+      );
 }

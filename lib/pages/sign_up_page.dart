@@ -172,7 +172,7 @@ class _SignUpPageState extends State<SignUpPage> {
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF1E2A4A).withOpacity(0.10),
+                        color: const Color(0xFF1E2A4A).withValues(alpha: 0.10),
                         blurRadius: 36,
                         offset: const Offset(0, 10),
                       ),
@@ -266,8 +266,8 @@ class _SignUpPageState extends State<SignUpPage> {
                                     ),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: _brandBlue.withOpacity(
-                                            _btnPressed ? 0.18 : 0.30),
+                                        color: _brandBlue.withValues(
+                                            alpha: _btnPressed ? 0.18 : 0.30),
                                         blurRadius: _btnPressed ? 10 : 16,
                                         offset:
                                             Offset(0, _btnPressed ? 3 : 6),
@@ -358,7 +358,7 @@ class _SignUpPageState extends State<SignUpPage> {
         boxShadow: focused
             ? [
                 BoxShadow(
-                  color: _brandBlue.withOpacity(0.10),
+                  color: _brandBlue.withValues(alpha: 0.10),
                   blurRadius: 6,
                   spreadRadius: 2,
                 )

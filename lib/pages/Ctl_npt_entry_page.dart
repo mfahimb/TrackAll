@@ -352,7 +352,7 @@ void _onDetect(BarcodeCapture capture) {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 14, vertical: 6),
                                 decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.70),
+                                  color: Colors.black.withValues(alpha: 0.70),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: const Row(
@@ -376,7 +376,7 @@ void _onDetect(BarcodeCapture capture) {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 12, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.55),
+                                  color: Colors.black.withValues(alpha: 0.55),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: const Text(
@@ -562,6 +562,7 @@ class _CtlNptEntryPageState extends State<CtlNptEntryPage> {
   String? buildingLabel, processLabel, lineLabel, categoryLabel,
       responsibleUserLabel, deptLabel, causeLabel, machineLabel;
   String? smv, remarks, gmtLossQty, numberOfOperators;
+  String? causeId;
 
   TimeOfDay? startTime, endTime;
 
@@ -747,8 +748,8 @@ class _CtlNptEntryPageState extends State<CtlNptEntryPage> {
       categoryId = null;          categoryLabel = null;
       responsibleUserId = null;   responsibleUserLabel = null;
       deptId = null;              deptLabel = null;
-      causeLabel = null;
-      machineNo = null;           machineLabel = null;
+      causeLabel = null;          causeId = null;
+      machineNo = null;          machineLabel = null;
       smv = null;  remarks = null;  gmtLossQty = null;  numberOfOperators = null;
       startTime = null;           endTime = null;
       _scannedMachines = [];      // ← clear scanned machines too
@@ -811,6 +812,7 @@ class _CtlNptEntryPageState extends State<CtlNptEntryPage> {
       startTime:         startTime!,
       endTime:           endTime!,
       cause:             causeLabel!,
+      causeId:           causeId,
       deptId:            deptId!,
       responsibleUserId: responsibleUserId!,
       remarks:           remarks!,
@@ -962,7 +964,8 @@ class _CtlNptEntryPageState extends State<CtlNptEntryPage> {
                     }, width),
 
                     _modernDropdown(context, "Cause *", causeLabel, downtimeCauseList, _kCause, (id, label) {
-                      setState(() { causeLabel = label; _missingFields.remove(_kCause); });
+                                         debugPrint('🧪 CAUSE selected => id="$id" label="$label"');
+                      setState(() { causeId = id; causeLabel = label; _missingFields.remove(_kCause); });
                     }, width),
 
                     _numberField("Number of Operators *", _operatorsController, _kOperators, (v) {
@@ -1176,7 +1179,7 @@ class _CtlNptEntryPageState extends State<CtlNptEntryPage> {
               borderRadius: BorderRadius.circular(8),
               border: _fieldBorder(fieldKey),
               boxShadow: isMissing
-                  ? [BoxShadow(color: Colors.red.withOpacity(0.10), blurRadius: 4, offset: const Offset(0, 2))]
+                  ? [BoxShadow(color: Colors.red.withValues(alpha: 0.10), blurRadius: 4, offset: const Offset(0, 2))]
                   : const [BoxShadow(color: Color(0x0F000000), blurRadius: 4, offset: Offset(0, 2))],
             ),
             child: Row(children: [
@@ -1302,7 +1305,7 @@ class _CtlNptEntryPageState extends State<CtlNptEntryPage> {
             borderRadius: BorderRadius.circular(8),
             border: _fieldBorder(fieldKey),
             boxShadow: isMissing
-                ? [BoxShadow(color: Colors.red.withOpacity(0.08), blurRadius: 4, offset: const Offset(0, 2))]
+                ? [BoxShadow(color: Colors.red.withValues(alpha: 0.08), blurRadius: 4, offset: const Offset(0, 2))]
                 : const [BoxShadow(color: Color(0x0F000000), blurRadius: 4, offset: Offset(0, 2))],
           ),
           child: Center(
@@ -1361,7 +1364,7 @@ class _CtlNptEntryPageState extends State<CtlNptEntryPage> {
             borderRadius: BorderRadius.circular(8),
             border: _fieldBorder(fieldKey),
             boxShadow: isMissing
-                ? [BoxShadow(color: Colors.red.withOpacity(0.08), blurRadius: 4, offset: const Offset(0, 2))]
+                ? [BoxShadow(color: Colors.red.withValues(alpha: 0.08), blurRadius: 4, offset: const Offset(0, 2))]
                 : const [BoxShadow(color: Color(0x0F000000), blurRadius: 4, offset: Offset(0, 2))],
           ),
           child: Center(

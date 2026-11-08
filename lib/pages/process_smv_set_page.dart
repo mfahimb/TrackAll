@@ -18,8 +18,7 @@ class _OverflowScrollText extends StatefulWidget {
   const _OverflowScrollText({
     required this.text,
     required this.style,
-    this.padding = const EdgeInsets.symmetric(horizontal: 12),
-  });
+  }) : padding = const EdgeInsets.symmetric(horizontal: 12);
 
   @override
   State<_OverflowScrollText> createState() => _OverflowScrollTextState();
@@ -1108,8 +1107,8 @@ Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
   onChanged: _alreadySubmittedOnServer
       ? (_) {} // locked but keeps active color (no-op instead of null)
       : (v) => setState(() => submitToggle = v),
-  activeColor: const Color(0xFF1A73E8),
-  activeTrackColor: const Color(0xFF1A73E8).withOpacity(0.5),
+  activeThumbColor: const Color(0xFF1A73E8),
+  activeTrackColor: const Color(0xFF1A73E8).withValues(alpha: 0.5),
 ),
           ),
         ),
@@ -1350,7 +1349,7 @@ Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           ),
           child: useWrap
               ? Text(
-                  value!,
+                  value,
                   style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,

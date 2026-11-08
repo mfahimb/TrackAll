@@ -199,7 +199,7 @@ class _SOSPageState extends State<SOSPage> with SingleTickerProviderStateMixin {
       barrierDismissible: true,
       barrierLabel: 'Status',
       transitionDuration: const Duration(milliseconds: 300),
-      barrierColor: Colors.black.withOpacity(0.6),
+      barrierColor: Colors.black.withValues(alpha: 0.6),
       pageBuilder: (_, animation, __) {
         return FadeTransition(
           opacity: animation,
@@ -220,7 +220,7 @@ class _SOSPageState extends State<SOSPage> with SingleTickerProviderStateMixin {
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
+                          color: Colors.black.withValues(alpha: 0.2),
                           blurRadius: 30,
                           offset: const Offset(0, 10),
                         )
@@ -232,7 +232,7 @@ class _SOSPageState extends State<SOSPage> with SingleTickerProviderStateMixin {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.blue.withOpacity(0.1),
+                            color: Colors.blue.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Icon(Icons.factory, size: 32, color: Colors.blue.shade700),
@@ -415,7 +415,7 @@ await _lovService.sendKanbanAlert(
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.15),
+                color: Colors.blue.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(Icons.factory, color: Colors.blue, size: 20),
@@ -681,7 +681,7 @@ class _SOSCard extends StatelessWidget {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: line.gradientColors[0].withOpacity(0.3),
+                  color: line.gradientColors[0].withValues(alpha: 0.3),
                   blurRadius: isNotReady ? 10 : 6,
                   offset: const Offset(0, 3),
                   spreadRadius: isNotReady ? 1 : 0,
@@ -700,7 +700,7 @@ class _SOSCard extends StatelessWidget {
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.red.withOpacity(0.25 * pulseAnimation.value),
+                                color: Colors.red.withValues(alpha: 0.25 * pulseAnimation.value),
                                 blurRadius: 15 + (5 * pulseAnimation.value),
                                 spreadRadius: 1.5 * pulseAnimation.value,
                               ),
@@ -724,7 +724,7 @@ class _SOSCard extends StatelessWidget {
                           Container(
                             padding: const EdgeInsets.all(4),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
+                              color: Colors.white.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Icon(line.statusIcon, color: Colors.white, size: 14),
@@ -734,7 +734,7 @@ class _SOSCard extends StatelessWidget {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
+                                color: Colors.white.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(5),
                               ),
                               child: const Icon(Icons.timer, color: Colors.white, size: 10),
@@ -763,9 +763,9 @@ class _SOSCard extends StatelessWidget {
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              Colors.white.withOpacity(0),
-                              Colors.white.withOpacity(0.2),
-                              Colors.white.withOpacity(0),
+                              Colors.white.withValues(alpha: 0),
+                              Colors.white.withValues(alpha: 0.2),
+                              Colors.white.withValues(alpha: 0),
                             ],
                           ),
                         ),
@@ -778,8 +778,8 @@ class _SOSCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
                           color: isNotReady
-                              ? Colors.orange.withOpacity(0.85)
-                              : Colors.green.withOpacity(0.85),
+                              ? Colors.orange.withValues(alpha: 0.85)
+                              : Colors.green.withValues(alpha: 0.85),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: FittedBox(
@@ -822,7 +822,7 @@ class _SOSCard extends StatelessWidget {
                         Row(
                           children: [
                             Icon(Icons.person,
-                                color: Colors.white.withOpacity(0.7), size: 10),
+                                color: Colors.white.withValues(alpha: 0.7), size: 10),
                             const SizedBox(width: 2),
                             Expanded(
                               child: Text(
@@ -830,7 +830,7 @@ class _SOSCard extends StatelessWidget {
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                   fontSize: h * 0.045,
-                                  color: Colors.white.withOpacity(0.8),
+                                  color: Colors.white.withValues(alpha: 0.8),
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -847,7 +847,7 @@ class _SOSCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               fontSize: h * 0.042,
-                              color: Colors.white.withOpacity(0.8),
+                              color: Colors.white.withValues(alpha: 0.8),
                               fontStyle: FontStyle.italic,
                             ),
                           ),
